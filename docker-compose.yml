@@ -1,0 +1,17 @@
+services:
+  mariadb:
+    image: mariadb:10.11
+    container_name: mantenimiento_mariadb
+    restart: unless-stopped
+    command: --max_allowed_packet=512M --innodb_log_file_size=256M --innodb_buffer_pool_size=1G
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: sistema01_mantenimiento
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./Bd:/docker-dump:ro
+
+volumes:
+  mariadb_data:
