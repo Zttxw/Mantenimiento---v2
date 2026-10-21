@@ -90,8 +90,9 @@ class AgentDeviceController extends Controller
         $sync = $this->agentDeviceService->receiveSync($device, $dto);
 
         return response()->json([
-            'message' => 'Sincronización recibida.',
-            'sync_id' => $sync->id,
+            'message'          => 'Sincronización recibida.',
+            'sync_id'          => $sync?->id,
+            'changes_detected' => $sync !== null,
         ]);
     }
 
@@ -121,8 +122,9 @@ class AgentDeviceController extends Controller
         $sync = $this->agentDeviceService->receiveSync($device, $dto);
 
         return response()->json([
-            'message' => 'Snapshot recibido.',
-            'sync_id' => $sync->id,
+            'message'          => 'Snapshot recibido.',
+            'sync_id'          => $sync?->id,
+            'changes_detected' => $sync !== null,
         ]);
     }
 

@@ -91,21 +91,248 @@ class AgentDeviceService
         return $device->fresh();
     }
 
-    public function receiveSync(AgentDevice $device, CreateAgentSyncDTO $dto): \App\Models\AgentSync
+    public function receiveSync(AgentDevice $device, CreateAgentSyncDTO $dto): ?\App\Models\AgentSync
     {
-        $sync = $device->syncs()->create($dto->toArray());
-
         if ($dto->sync_type === AgentSyncType::SNAPSHOT && $dto->payload_json) {
-            $device->update(['last_snapshot_json' => $dto->payload_json]);
+            $newPayload = $dto->payload_json;
+            $newHash = $this->computeStructuralSnapshotHash($newPayload);
+
+            $previousSync = $device->syncs()
+                ->where('sync_type', AgentSyncType::SNAPSHOT->value)
+                ->latest('synced_at')
+                ->first();
+
+            $previousPayload = $previousSync?->payload_json ?? $device->last_snapshot_json;
+            $previousHash = $previousPayload ? $this->computeStructuralSnapshotHash($previousPayload) : null;
+
+            // Actualizar siempre last_snapshot_json en agent_devices
+            $device->update(['last_snapshot_json' => $newPayload]);
 
             if ($device->asset) {
-                $this->updateAssetFromAgentData($device->asset, $dto->payload_json, $device->last_health_json, $device);
+                $this->updateAssetFromAgentData($device->asset, $newPayload, $device->last_health_json, $device);
             }
+
+            // Deduplicación: si el hash estructural es idéntico, no insertar nueva fila
+            if ($previousHash !== null && $newHash === $previousHash) {
+                return null;
+            }
+
+            // Si el hash difiere (o es el primer snapshot), calcular el delta
+            $delta = $this->calculateSnapshotDelta($previousPayload ?? [], $newPayload);
+
+            $sync = $device->syncs()->create([
+                'sync_type'             => AgentSyncType::SNAPSHOT->value,
+                'payload_json'          => $newPayload,
+                'detected_changes_json' => $delta,
+                'status'                => \App\Enums\AgentSyncStatus::PROCESADO->value,
+                'synced_at'             => now(),
+            ]);
+
+            return $sync->fresh();
         }
 
+        $sync = $device->syncs()->create($dto->toArray());
         $sync->update(['status' => \App\Enums\AgentSyncStatus::PROCESADO->value]);
 
         return $sync->fresh();
+    }
+
+    /**
+     * Campos volátiles de telemetría/runtime ignorados en el hash estructural.
+     */
+    public function getIgnoredVolatileFields(): array
+    {
+        return [
+            'collectedAtUtc',
+            'CollectedAtUtc',
+            'device.lastBootTimeUtc',
+            'device.LastBootTimeUtc',
+            'device.freeStorageGb',
+            'device.FreeStorageGb',
+            'device.storageVolumes.*.freeGb',
+            'device.storageVolumes.*.usedGb',
+            'device.storageVolumes.*.usedPercent',
+            'device.storageVolumes.*.FreeGb',
+            'device.storageVolumes.*.UsedGb',
+            'device.storageVolumes.*.UsedPercent',
+        ];
+    }
+
+    /**
+     * Normaliza el snapshot eliminando campos volátiles y ordenando colecciones determinísticamente.
+     */
+    public function normalizeSnapshotPayload(array $payload): array
+    {
+        unset($payload['collectedAtUtc'], $payload['CollectedAtUtc']);
+
+        if (isset($payload['device']) && is_array($payload['device'])) {
+            unset(
+                $payload['device']['lastBootTimeUtc'],
+                $payload['device']['LastBootTimeUtc'],
+                $payload['device']['freeStorageGb'],
+                $payload['device']['FreeStorageGb']
+            );
+
+            if (isset($payload['device']['storageVolumes']) && is_array($payload['device']['storageVolumes'])) {
+                $cleanedVolumes = [];
+                foreach ($payload['device']['storageVolumes'] as $vol) {
+                    if (is_array($vol)) {
+                        unset(
+                            $vol['freeGb'], $vol['usedGb'], $vol['usedPercent'],
+                            $vol['FreeGb'], $vol['UsedGb'], $vol['UsedPercent']
+                        );
+                        $cleanedVolumes[] = $vol;
+                    }
+                }
+                usort($cleanedVolumes, fn ($a, $b) => strcmp($a['name'] ?? '', $b['name'] ?? ''));
+                $payload['device']['storageVolumes'] = $cleanedVolumes;
+            }
+        }
+
+        if (isset($payload['installedSoftware']) && is_array($payload['installedSoftware'])) {
+            $software = array_filter($payload['installedSoftware'], 'is_array');
+            usort($software, function ($a, $b) {
+                $nameA = strtolower($a['name'] ?? $a['normalizedName'] ?? '');
+                $nameB = strtolower($b['name'] ?? $b['normalizedName'] ?? '');
+                return strcmp($nameA, $nameB);
+            });
+            $payload['installedSoftware'] = array_values($software);
+        }
+
+        $this->recursiveKsort($payload);
+
+        return $payload;
+    }
+
+    /**
+     * Genera el hash SHA-256 del contenido estructural normalizado.
+     */
+    public function computeStructuralSnapshotHash(array $payload): string
+    {
+        $normalized = $this->normalizeSnapshotPayload($payload);
+
+        return hash('sha256', json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * Calcula las diferencias estructurales (delta) entre dos snapshots.
+     */
+    public function calculateSnapshotDelta(array $oldPayload, array $newPayload): array
+    {
+        if (empty($oldPayload)) {
+            $softwareCount = is_array($newPayload['installedSoftware'] ?? null)
+                ? count($newPayload['installedSoftware'])
+                : 0;
+
+            return [
+                'type'             => 'initial_registration',
+                'detected_at'      => now()->toIso8601String(),
+                'software_count'   => $softwareCount,
+                'operating_system' => data_get($newPayload, 'device.operatingSystem'),
+                'total_memory_gb'  => data_get($newPayload, 'device.totalMemoryGb'),
+                'total_storage_gb' => data_get($newPayload, 'device.totalStorageGb'),
+            ];
+        }
+
+        $delta = [
+            'type'         => 'hardware_software_change',
+            'detected_at'  => now()->toIso8601String(),
+            'hardware'     => [],
+            'software'     => [
+                'added'   => [],
+                'removed' => [],
+                'updated' => [],
+            ],
+            'administrative' => [],
+        ];
+
+        // Comparar especificaciones de hardware
+        $hwFields = ['operatingSystem', 'osVersion', 'processorName', 'totalMemoryGb', 'totalStorageGb', 'serialNumber'];
+        foreach ($hwFields as $field) {
+            $oldVal = data_get($oldPayload, "device.{$field}");
+            $newVal = data_get($newPayload, "device.{$field}");
+            if ($oldVal !== $newVal) {
+                $delta['hardware'][$field] = ['from' => $oldVal, 'to' => $newVal];
+            }
+        }
+
+        // Comparar software instalado
+        $oldSoftware = $this->indexSoftware(data_get($oldPayload, 'installedSoftware', []));
+        $newSoftware = $this->indexSoftware(data_get($newPayload, 'installedSoftware', []));
+
+        foreach ($newSoftware as $name => $item) {
+            if (! isset($oldSoftware[$name])) {
+                $delta['software']['added'][] = [
+                    'name'    => $item['name'],
+                    'version' => $item['version'] ?? null,
+                ];
+            } elseif (($oldSoftware[$name]['version'] ?? '') !== ($item['version'] ?? '')) {
+                $delta['software']['updated'][] = [
+                    'name'         => $item['name'],
+                    'from_version' => $oldSoftware[$name]['version'] ?? null,
+                    'to_version'   => $item['version'] ?? null,
+                ];
+            }
+        }
+
+        foreach ($oldSoftware as $name => $item) {
+            if (! isset($newSoftware[$name])) {
+                $delta['software']['removed'][] = [
+                    'name'    => $item['name'],
+                    'version' => $item['version'] ?? null,
+                ];
+            }
+        }
+
+        // Comparar asignación administrativa
+        $adminFields = ['assetCode', 'organizationalUnitId', 'responsibleEmployeeId'];
+        foreach ($adminFields as $field) {
+            $oldAdmin = data_get($oldPayload, "administrativeBinding.{$field}");
+            $newAdmin = data_get($newPayload, "administrativeBinding.{$field}");
+            if ($oldAdmin !== $newAdmin) {
+                $delta['administrative'][$field] = ['from' => $oldAdmin, 'to' => $newAdmin];
+            }
+        }
+
+        // Limpiar secciones vacías
+        if (empty($delta['hardware'])) unset($delta['hardware']);
+        if (empty($delta['software']['added']) && empty($delta['software']['removed']) && empty($delta['software']['updated'])) {
+            unset($delta['software']);
+        }
+        if (empty($delta['administrative'])) unset($delta['administrative']);
+
+        return $delta;
+    }
+
+    private function indexSoftware(mixed $list): array
+    {
+        if (! is_array($list)) return [];
+
+        $indexed = [];
+        foreach ($list as $item) {
+            if (is_array($item)) {
+                $name = trim($item['name'] ?? $item['normalizedName'] ?? '');
+                if ($name !== '') {
+                    $key = strtolower($name);
+                    $indexed[$key] = [
+                        'name'    => $name,
+                        'version' => $item['version'] ?? null,
+                    ];
+                }
+            }
+        }
+
+        return $indexed;
+    }
+
+    private function recursiveKsort(array &$array): void
+    {
+        ksort($array);
+        foreach ($array as &$value) {
+            if (is_array($value)) {
+                $this->recursiveKsort($value);
+            }
+        }
     }
 
     public function findByToken(string $token): AgentDevice
