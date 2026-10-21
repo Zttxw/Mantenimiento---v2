@@ -209,4 +209,128 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
 
         $this->assertDatabaseMissing('agent_syncs', ['id' => $sync->id]);
     }
+
+    public function test_web_show_loads_and_renders_view_without_errors(): void
+    {
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+
+        $user = \App\Models\User::create([
+            'username' => 'admin_test',
+            'email' => 'admin@test.com',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+        $user->assignRole(\App\Enums\RoleEnum::ADMIN->value);
+
+        $device = AgentDevice::create([
+            'hostname' => 'PC-MONITOR-01',
+            'status' => 'activo',
+            'agent_version' => '1.0.0',
+            'last_ip' => '192.168.1.50',
+            'last_heartbeat_at' => now(),
+        ]);
+
+        // Crear syncs de heartbeat y snapshot para verificar que la vista renderiza con datos
+        AgentSync::create([
+            'agent_device_id' => $device->id,
+            'sync_type' => AgentSyncType::HEARTBEAT->value,
+            'payload_json' => [
+                'last_ip' => '192.168.1.50',
+                'agent_version' => '1.0.0',
+                'health' => ['overallStatus' => 'ok'],
+            ],
+            'status' => 'procesado',
+            'synced_at' => now()->subMinutes(10),
+        ]);
+
+        AgentSync::create([
+            'agent_device_id' => $device->id,
+            'sync_type' => AgentSyncType::SNAPSHOT->value,
+            'payload_json' => [
+                'device' => ['hostname' => 'PC-MONITOR-01', 'totalMemoryGb' => 16],
+            ],
+            'status' => 'procesado',
+            'synced_at' => now()->subMinutes(5),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('agents.show', $device));
+
+        $response->assertOk();
+        $response->assertViewIs('agents.show');
+        $response->assertSee('PC-MONITOR-01');
+        $response->assertSee('192.168.1.50');
+    }
+
+    public function test_purge_command_with_compact_snapshots_preserves_first_of_streak_and_latest(): void
+    {
+        $device = AgentDevice::create(['hostname' => 'PC-COMPACT-01', 'status' => 'activo']);
+
+        $payloadA = [
+            'device' => ['hostname' => 'PC-COMPACT-01', 'totalMemoryGb' => 16],
+            'installedSoftware' => [['name' => 'AppA', 'version' => '1.0']],
+        ];
+
+        // 4 snapshots idénticos con diferentes fechas (dentro del período de retención)
+        $s1 = AgentSync::create([
+            'agent_device_id' => $device->id,
+            'sync_type' => AgentSyncType::SNAPSHOT->value,
+            'payload_json' => array_merge($payloadA, ['collectedAtUtc' => '2026-10-15T10:00:00+00:00']),
+            'status' => 'procesado',
+            'synced_at' => now()->subDays(5),
+        ]);
+        $s2 = AgentSync::create([
+            'agent_device_id' => $device->id,
+            'sync_type' => AgentSyncType::SNAPSHOT->value,
+            'payload_json' => array_merge($payloadA, ['collectedAtUtc' => '2026-10-16T10:00:00+00:00']),
+            'status' => 'procesado',
+            'synced_at' => now()->subDays(4),
+        ]);
+        $s3 = AgentSync::create([
+            'agent_device_id' => $device->id,
+            'sync_type' => AgentSyncType::SNAPSHOT->value,
+            'payload_json' => array_merge($payloadA, ['collectedAtUtc' => '2026-10-17T10:00:00+00:00']),
+            'status' => 'procesado',
+            'synced_at' => now()->subDays(3),
+        ]);
+        $s4 = AgentSync::create([
+            'agent_device_id' => $device->id,
+            'sync_type' => AgentSyncType::SNAPSHOT->value,
+            'payload_json' => array_merge($payloadA, ['collectedAtUtc' => '2026-10-18T10:00:00+00:00']),
+            'status' => 'procesado',
+            'synced_at' => now()->subDays(2),
+        ]);
+
+        // Asegurar orden temporal en BD
+        DB::table('agent_syncs')->where('id', $s1->id)->update(['created_at' => now()->subDays(5)]);
+        DB::table('agent_syncs')->where('id', $s2->id)->update(['created_at' => now()->subDays(4)]);
+        DB::table('agent_syncs')->where('id', $s3->id)->update(['created_at' => now()->subDays(3)]);
+        DB::table('agent_syncs')->where('id', $s4->id)->update(['created_at' => now()->subDays(2)]);
+
+        // 1. Dry run con compact-snapshots no borra nada
+        $this->artisan('agents:purge-sync-history', [
+            '--compact-snapshots' => true,
+            '--dry-run' => true,
+            '--snapshot-days' => 90,
+        ])->assertSuccessful();
+
+        $this->assertEquals(4, AgentSync::where('agent_device_id', $device->id)->count());
+
+        // 2. Ejecución real con compact-snapshots
+        $this->artisan('agents:purge-sync-history', [
+            '--compact-snapshots' => true,
+            '--snapshot-days' => 90,
+        ])->assertSuccessful();
+
+        // Debe conservar:
+        // - s1 (el primero del tramo idéntico)
+        // - s4 (el último snapshot del dispositivo)
+        // Y eliminar los duplicados intermedios s2 y s3
+        $this->assertDatabaseHas('agent_syncs', ['id' => $s1->id]);
+        $this->assertDatabaseMissing('agent_syncs', ['id' => $s2->id]);
+        $this->assertDatabaseMissing('agent_syncs', ['id' => $s3->id]);
+        $this->assertDatabaseHas('agent_syncs', ['id' => $s4->id]);
+        $this->assertEquals(2, AgentSync::where('agent_device_id', $device->id)->count());
+    }
 }
+
+
