@@ -1,9 +1,11 @@
 <x-layouts.app title="Estructura Organizacional" moduleLabel="Organización" pageTitle="Estructura Institucional">
 
-<div x-data="orgSingleScreen()" x-init="init()" class="flex flex-col h-[calc(100vh-95px)] overflow-hidden">
+<div x-data="orgGraph({{ json_encode($treeData, JSON_HEX_APOS | JSON_HEX_QUOT) }})"
+     x-init="init()"
+     class="flex flex-col h-[calc(100vh-95px)] overflow-hidden select-none">
 
-    {{-- Encabezado Compacto de Una Sola Fila --}}
-    <div class="flex items-center justify-between gap-4 pb-3 mb-3 border-b border-zinc-200/80 shrink-0">
+    {{-- Encabezado Principal Compacto --}}
+    <div class="flex items-center justify-between gap-4 pb-3 mb-2 border-b border-zinc-200/80 shrink-0">
         {{-- Título y Métricas Rápidas --}}
         <div class="flex items-center gap-3 flex-wrap">
             <h1 class="text-xl font-bold tracking-tight text-zinc-900">Oficinas y Dependencias</h1>
@@ -22,22 +24,21 @@
             </div>
         </div>
 
-        {{-- Switch de Vistas y Botón de Nueva Unidad --}}
+        {{-- Switch de Vistas (Grafo Visual vs Tabla) y Acciones --}}
         <div class="flex items-center gap-2 shrink-0">
-            {{-- Toggle Árbol / Tabla --}}
             <div class="inline-flex items-center p-0.5 rounded-lg bg-zinc-100 border border-zinc-200 text-xs">
                 <button type="button"
-                        @click="viewMode = 'tree'"
-                        :class="viewMode === 'tree' ? 'bg-white text-zinc-900 font-semibold shadow-2xs' : 'text-zinc-600 hover:text-zinc-900'"
+                        @click="viewMode = 'graph'"
+                        :class="viewMode === 'graph' ? 'bg-white text-zinc-900 font-semibold shadow-2xs' : 'text-zinc-600 hover:text-zinc-900'"
                         class="flex items-center gap-1.5 px-3 py-1 rounded-md transition-all">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
-                    <span>Árbol</span>
+                    <span>🌐</span>
+                    <span>Árbol (Grafo)</span>
                 </button>
                 <button type="button"
                         @click="viewMode = 'table'"
                         :class="viewMode === 'table' ? 'bg-white text-zinc-900 font-semibold shadow-2xs' : 'text-zinc-600 hover:text-zinc-900'"
                         class="flex items-center gap-1.5 px-3 py-1 rounded-md transition-all">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 011.875 1.875v11.25a1.875 1.875 0 01-1.875 1.875H5.625a1.875 1.875 0 01-1.875-1.875V6.375A1.875 1.875 0 015.625 4.5z"/></svg>
+                    <span>📋</span>
                     <span>Tabla</span>
                 </button>
             </div>
@@ -53,275 +54,316 @@
     </div>
 
     {{-- ========================================================================= --}}
-    {{-- MODO 1: ESPACIO DE TRABAJO EN UNA SOLA PANTALLA (ÁRBOL + FICHA EN VIVO)   --}}
+    {{-- MODO 1: GRAFO INTERACTIVO DE NODOS CIRCULARES CONECTADOS                  --}}
     {{-- ========================================================================= --}}
-    <div x-show="viewMode === 'tree'" class="flex-1 flex gap-4 overflow-hidden">
+    <div x-show="viewMode === 'graph'" class="flex-1 relative bg-zinc-900/5 rounded-2xl border border-zinc-200/90 overflow-hidden flex flex-col">
 
-        {{-- PANEL IZQUIERDO: Explorador de Árbol Jerárquico (370px) --}}
-        <div class="w-[370px] shrink-0 bg-white rounded-xl border border-zinc-200/80 shadow-xs flex flex-col overflow-hidden">
-
-            {{-- Buscador y Botones de Control --}}
-            <div class="p-2.5 border-b border-zinc-200/80 space-y-2 bg-zinc-50/50 shrink-0">
-                <div class="relative">
-                    <svg class="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input type="text"
-                           x-model="searchTree"
-                           @input="onSearchTree()"
-                           placeholder="Filtrar por oficina, código o titular..."
-                           class="w-full pl-8 pr-7 py-1.5 bg-white rounded-md border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-colors">
-                    <button type="button"
-                            x-show="searchTree.length > 0"
-                            @click="searchTree = ''; onSearchTree()"
-                            class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs">
-                        ✕
-                    </button>
-                </div>
-
-                {{-- Acciones Rápidas del Árbol --}}
-                <div class="flex items-center justify-between text-[11px] text-zinc-600">
-                    <div class="flex items-center gap-1">
-                        <button type="button" @click="expandAll()" class="px-1.5 py-0.5 rounded hover:bg-zinc-200/70 transition-colors">
-                            Expandir
-                        </button>
-                        <span class="text-zinc-300">&bull;</span>
-                        <button type="button" @click="collapseAll()" class="px-1.5 py-0.5 rounded hover:bg-zinc-200/70 transition-colors">
-                            Colapsar
-                        </button>
-                        <span class="text-zinc-300">&bull;</span>
-                        <button type="button" @click="expandToLevel(2)" class="px-1.5 py-0.5 rounded hover:bg-zinc-200/70 transition-colors" title="Hasta Gerencias">
-                            Gerencias
-                        </button>
-                    </div>
-
-                    <span x-show="matchesCount > 0" class="text-[10px] font-mono text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                        <span x-text="matchesCount"></span> encontradas
-                    </span>
-                </div>
+        {{-- Barra de Controles Superior Flotante --}}
+        <div class="absolute top-3 left-3 right-3 z-30 flex items-center justify-between gap-3 pointer-events-none">
+            {{-- Buscador en Vivo en el Grafo --}}
+            <div class="pointer-events-auto relative w-72 sm:w-80 shadow-sm">
+                <svg class="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input type="text"
+                       x-model="searchQuery"
+                       @input="onSearch()"
+                       placeholder="Buscar oficina en el grafo..."
+                       class="w-full pl-9 pr-7 py-1.5 bg-white/95 backdrop-blur-md rounded-xl border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 shadow-xs">
+                <button type="button"
+                        x-show="searchQuery.length > 0"
+                        @click="searchQuery = ''; onSearch()"
+                        class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs">
+                    ✕
+                </button>
             </div>
 
-            {{-- Lista del Árbol Compacto con Scroll Independiente --}}
-            <div class="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar text-xs">
-                @foreach ($treeData as $rootNode)
-                    @include('organizational-units.partials.compact-tree-item', ['node' => $rootNode, 'depth' => 1])
-                @endforeach
-            </div>
+            {{-- Leyenda y Controles de Zoom / Vista --}}
+            <div class="pointer-events-auto flex items-center gap-1.5 bg-white/95 backdrop-blur-md p-1 rounded-xl border border-zinc-200 shadow-xs text-xs">
+                {{-- Botones de Zoom --}}
+                <button type="button" @click="zoomIn()" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-100 text-zinc-700 font-bold" title="Acercar (+)">
+                    +
+                </button>
+                <button type="button" @click="zoomOut()" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-zinc-100 text-zinc-700 font-bold" title="Alejar (-)">
+                    &minus;
+                </button>
+                <button type="button" @click="resetView()" class="px-2 py-1 rounded-lg hover:bg-zinc-100 text-zinc-700 font-medium text-[11px]" title="Centrar en Alcaldía">
+                    Centrar
+                </button>
 
+                <div class="h-4 w-px bg-zinc-200 mx-0.5"></div>
+
+                {{-- Expansión Masiva --}}
+                <button type="button" @click="expandAll()" class="px-2 py-1 rounded-lg hover:bg-zinc-100 text-zinc-700 font-medium text-[11px]">
+                    Expandir todo
+                </button>
+                <button type="button" @click="collapseAll()" class="px-2 py-1 rounded-lg hover:bg-zinc-100 text-zinc-700 font-medium text-[11px]">
+                    Colapsar
+                </button>
+            </div>
         </div>
 
-        {{-- PANEL DERECHO: Ficha en Vivo de la Unidad Seleccionada (flex-1) --}}
-        <div class="flex-1 bg-white rounded-xl border border-zinc-200/80 shadow-xs flex flex-col overflow-hidden">
+        {{-- Leyenda de Niveles (Esquina Inferior Izquierda) --}}
+        <div class="absolute bottom-3 left-3 z-30 pointer-events-none bg-white/95 backdrop-blur-md px-3 py-2 rounded-xl border border-zinc-200 shadow-xs text-[10px] text-zinc-600 flex items-center gap-3">
+            <span class="font-semibold text-zinc-800 uppercase tracking-wider">Niveles:</span>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 border border-amber-600"></span> Alcaldía</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span> Alta Dirección</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span> Gerencias</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-teal-600"></span> Subgerencias / OTI</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-zinc-400"></span> Áreas</div>
+        </div>
 
-            {{-- Estado de Carga --}}
-            <div x-show="loading" class="flex-1 flex items-center justify-center text-zinc-400 text-xs gap-2">
-                <svg class="w-4 h-4 animate-spin text-zinc-600" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span>Cargando datos de la dependencia...</span>
+        {{-- LIENZO INTERACTIVO (CANVAS DE ARRASTRE Y ZOOM) --}}
+        <div class="flex-1 w-full h-full relative cursor-grab active:cursor-grabbing overflow-hidden"
+             @mousedown="startDrag($event)"
+             @mousemove="onDrag($event)"
+             @mouseup="stopDrag()"
+             @mouseleave="stopDrag()"
+             @wheel.prevent="onWheel($event)">
+
+            {{-- Patrón de Puntos de Fondo (Grid Tecnológico) --}}
+            <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-30">
+                <defs>
+                    <pattern id="grid-dots" width="28" height="28" patternUnits="userSpaceOnUse">
+                        <circle cx="2" cy="2" r="1" fill="#71717a"/>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid-dots)"/>
+            </svg>
+
+            {{-- Contenedor Transformable (Aplica Pan y Zoom) --}}
+            <div class="absolute inset-0 transition-transform duration-75 origin-top-left"
+                 :style="`transform: translate(${panX}px, ${panY}px) scale(${zoom}); transform-origin: 0 0;`">
+
+                {{-- Capa SVG de Líneas Conectoras Curvas (Ramas del Árbol) --}}
+                <svg class="absolute inset-0 overflow-visible pointer-events-none" style="width: 4000px; height: 8000px;">
+                    <template x-for="link in visibleLinks" :key="link.id">
+                        <path :d="link.path"
+                              fill="none"
+                              stroke="#cbd5e1"
+                              stroke-width="2.5"
+                              stroke-linecap="round"
+                              class="transition-all duration-300"
+                              :class="{
+                                  'stroke-indigo-600 stroke-[3px] opacity-100': highlightedBranch.includes(link.childId),
+                                  'opacity-70': !highlightedBranch.includes(link.childId)
+                              }"/>
+                    </template>
+                </svg>
+
+                {{-- Capa de Nodos Circulares ("Circulitos Relacionados") --}}
+                <template x-for="node in visibleNodes" :key="node.id">
+                    <div class="absolute node-interactive -translate-x-1/2 -translate-y-1/2 transition-all duration-300 flex flex-col items-center"
+                         :style="`left: ${node.x}px; top: ${node.y}px;`"
+                         @mouseenter="highlightNode(node.id)"
+                         @mouseleave="clearHighlight()">
+
+                        {{-- Contenedor del Círculo Principal --}}
+                        <div class="relative group cursor-pointer"
+                             @click="openInspector(node.id)">
+
+                            {{-- Círculo según Nivel Jerárquico --}}
+                            <div class="rounded-full flex items-center justify-center font-bold transition-all duration-200 shadow-sm group-hover:scale-105"
+                                 :class="{
+                                     // Nivel 1: Alcaldía (64px, fondo oscuro prestigioso, aro dorado)
+                                     'w-16 h-16 bg-slate-950 text-amber-300 border-[3px] border-amber-400 shadow-md ring-4 ring-amber-400/20': node.depth === 1,
+                                     // Nivel 2: Alta Dirección (52px, aro índigo)
+                                     'w-13 h-13 bg-white text-indigo-700 border-[3px] border-indigo-600 ring-2 ring-indigo-500/20': node.depth === 2,
+                                     // Nivel 3: Gerencias (46px, aro azul)
+                                     'w-11 h-11 bg-white text-blue-700 border-[2.5px] border-blue-500 ring-2 ring-blue-500/15': node.depth === 3,
+                                     // Nivel 4: Subgerencias / OTI (40px, aro teal)
+                                     'w-10 h-10 bg-white text-teal-700 border-[2px] border-teal-500': node.depth === 4,
+                                     // Nivel 5: Áreas / Unidades (36px, aro zinc)
+                                     'w-9 h-9 bg-zinc-50 text-zinc-600 border-[2px] border-zinc-400': node.depth >= 5,
+                                     // Selección activa
+                                     'ring-4 ring-zinc-950 ring-offset-2 scale-110 shadow-lg': activeNodeId === node.id,
+                                     // Coincidencia de búsqueda
+                                     'ring-4 ring-amber-400 animate-pulse': isMatch(node.id)
+                                 }">
+
+                                {{-- Icono / Iniciales dentro del Círculo --}}
+                                <template x-if="node.depth === 1">
+                                    <span class="text-xl">🏛️</span>
+                                </template>
+                                <template x-if="node.depth === 2">
+                                    <span class="text-sm font-extrabold" x-text="node.code || 'GM'"></span>
+                                </template>
+                                <template x-if="node.depth === 3">
+                                    <span class="text-xs font-bold" x-text="node.code || 'GER'"></span>
+                                </template>
+                                <template x-if="node.depth === 4">
+                                    <span class="text-[11px] font-bold" x-text="node.code || 'SUB'"></span>
+                                </template>
+                                <template x-if="node.depth >= 5">
+                                    <span class="text-[10px] font-mono" x-text="node.code || '•'"></span>
+                                </template>
+                            </div>
+
+                            {{-- Botón Flotante para Expandir / Colapsar Ramas Hijas --}}
+                            <template x-if="node.hasChildren">
+                                <button type="button"
+                                        @click.stop="toggleBranch(node.id)"
+                                        class="absolute -right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-zinc-900 text-white font-bold text-[10px] flex items-center justify-center hover:scale-125 transition-transform shadow-xs z-20 border border-white"
+                                        :title="node.isExpanded ? 'Colapsar subunidades' : 'Expandir subunidades'">
+                                    <span x-text="node.isExpanded ? '−' : '+' + node.children.length"></span>
+                                </button>
+                            </template>
+
+                            {{-- Badge de Equipos Informáticos OTI (Esquina superior) --}}
+                            <template x-if="node.assets_count > 0">
+                                <span class="absolute -top-1.5 -right-2 px-1.5 py-0.2 rounded-full font-mono text-[9px] font-bold bg-blue-600 text-white shadow-2xs border border-white flex items-center gap-0.5 z-20"
+                                      title="Equipos OTI en custodia">
+                                    <span>💻</span>
+                                    <span x-text="node.assets_count"></span>
+                                </span>
+                            </template>
+                        </div>
+
+                        {{-- Etiqueta de Texto Debajo del Círculo --}}
+                        <div class="mt-2 text-center pointer-events-auto cursor-pointer max-w-[200px]"
+                             @click="openInspector(node.id)">
+                            <h4 class="text-xs font-bold text-zinc-900 tracking-tight leading-snug line-clamp-2 hover:text-indigo-600 transition-colors"
+                                x-text="node.name"></h4>
+                            <template x-if="node.responsible">
+                                <p class="text-[10px] text-zinc-500 truncate mt-0.5" x-text="node.responsible.name"></p>
+                            </template>
+                        </div>
+
+                    </div>
+                </template>
+
+            </div>
+        </div>
+
+        {{-- PANEL LATERAL INSPECTOR (SLIDE-OVER AL TOCAR UN CÍRCULO) --}}
+        <div x-show="inspectorOpen"
+             x-cloak
+             class="absolute inset-y-0 right-0 z-40 w-80 sm:w-96 bg-white/95 backdrop-blur-md border-l border-zinc-200 shadow-2xl flex flex-col transition-all duration-300"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full">
+
+            {{-- Encabezado del Inspector --}}
+            <div class="p-4 border-b border-zinc-200 bg-zinc-50/70 flex items-start justify-between">
+                <div class="min-w-0 pr-2">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase bg-zinc-200 text-zinc-700 font-semibold"
+                          x-text="selectedUnit ? selectedUnit.type_label : ''"></span>
+                    <h3 class="text-base font-bold text-zinc-900 mt-1 leading-snug"
+                        x-text="selectedUnit ? selectedUnit.name : 'Cargando...'"></h3>
+                    <p class="text-[11px] text-zinc-500 mt-0.5 truncate" x-text="selectedUnit ? selectedUnit.full_path : ''"></p>
+                </div>
+                <button type="button" @click="closeInspector()" class="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-200/50">
+                    ✕
+                </button>
             </div>
 
-            {{-- Vista de Detalle de la Oficina --}}
-            <div x-show="!loading && currentUnit" class="flex-1 flex flex-col overflow-hidden">
-
-                {{-- Barra Superior de la Unidad Seleccionada --}}
-                <div class="p-4 border-b border-zinc-200/80 bg-zinc-50/50 flex items-center justify-between gap-4 shrink-0">
-                    <div class="min-w-0">
-                        {{-- Ruta jerárquica / Breadcrumbs --}}
-                        <div class="flex items-center gap-1.5 text-[11px] text-zinc-400 mb-1 truncate">
-                            <span x-text="currentUnit ? currentUnit.full_path : ''" class="truncate"></span>
+            {{-- Contenido Scrollable del Inspector --}}
+            <div class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar text-xs">
+                {{-- Responsable Titular --}}
+                <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Responsable Titular</span>
+                    <template x-if="selectedUnit && selectedUnit.responsible">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-full bg-zinc-900 text-white font-bold text-xs flex items-center justify-center shrink-0"
+                                 x-text="selectedUnit.responsible.name.charAt(0)"></div>
+                            <div class="min-w-0">
+                                <p class="font-semibold text-zinc-900 truncate" x-text="selectedUnit.responsible.name"></p>
+                                <p class="text-[11px] text-zinc-500 truncate" x-text="selectedUnit.responsible.position || 'Responsable'"></p>
+                                <p class="text-[10px] font-mono text-zinc-400" x-text="'DNI: ' + selectedUnit.responsible.dni"></p>
+                            </div>
                         </div>
+                    </template>
+                    <template x-if="selectedUnit && !selectedUnit.responsible">
+                        <p class="text-zinc-400 italic">Sin responsable asignado actualmente.</p>
+                    </template>
+                </div>
 
-                        {{-- Nombre y Badges --}}
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <h2 class="text-lg font-bold text-zinc-900 tracking-tight truncate" x-text="currentUnit ? currentUnit.name : ''"></h2>
-                            <template x-if="currentUnit && currentUnit.code">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-100 text-zinc-700 border border-zinc-200"
-                                      x-text="currentUnit.code"></span>
-                            </template>
-                            <span class="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-zinc-200/70 text-zinc-700 font-semibold"
-                                  x-text="currentUnit ? currentUnit.type_label : ''"></span>
-                            <span class="inline-flex items-center gap-1 text-[11px] font-medium"
-                                  :class="currentUnit && currentUnit.is_active ? 'text-emerald-700' : 'text-zinc-400'">
-                                <span class="w-1.5 h-1.5 rounded-full" :class="currentUnit && currentUnit.is_active ? 'bg-emerald-500' : 'bg-zinc-400'"></span>
-                                <span x-text="currentUnit && currentUnit.is_active ? 'Activa' : 'Inactiva'"></span>
-                            </span>
-                        </div>
+                {{-- Métricas Rápidas --}}
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80">
+                        <span class="text-[10px] uppercase font-bold text-zinc-400 block">Personal</span>
+                        <span class="text-xl font-bold font-mono text-zinc-900 mt-0.5 block"
+                              x-text="selectedUnit && selectedUnit.employees ? selectedUnit.employees.length : 0"></span>
+                        <span class="text-[10px] text-zinc-400">trabajadores</span>
                     </div>
-
-                    {{-- Botones de Acción --}}
-                    <div class="flex items-center gap-2 shrink-0">
-                        <a :href="currentUnit ? currentUnit.show_url : '#'"
-                           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 text-white hover:bg-zinc-800 transition-colors shadow-xs">
-                            <span>Ver Ficha Completa</span>
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-                        </a>
-                        @can('org-unit.edit')
-                        <a :href="currentUnit ? currentUnit.edit_url : '#'"
-                           class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 transition-colors shadow-2xs">
-                            <svg class="w-3.5 h-3.5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125"/></svg>
-                            <span>Editar</span>
-                        </a>
-                        @endcan
+                    <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80">
+                        <span class="text-[10px] uppercase font-bold text-zinc-400 block">Equipos OTI</span>
+                        <span class="text-xl font-bold font-mono text-blue-700 mt-0.5 block"
+                              x-text="selectedUnit && selectedUnit.assets ? selectedUnit.assets.length : 0"></span>
+                        <span class="text-[10px] text-zinc-400">activos en custodia</span>
                     </div>
                 </div>
 
-                {{-- Contenido de la Ficha (Scrollable con diseño minimalista) --}}
-                <div class="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar text-xs">
-
-                    {{-- Ficha del Titular y Métricas Rápidas --}}
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {{-- Responsable Titular --}}
-                        <div class="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/70 md:col-span-1">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-2">Responsable Asignado</span>
-                            <template x-if="currentUnit && currentUnit.responsible">
-                                <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-full bg-zinc-900 text-white font-bold text-xs flex items-center justify-center shrink-0"
-                                         x-text="currentUnit.responsible.name.charAt(0)"></div>
-                                    <div class="min-w-0">
-                                        <p class="font-semibold text-zinc-900 truncate" x-text="currentUnit.responsible.name"></p>
-                                        <p class="text-[11px] text-zinc-500 truncate" x-text="currentUnit.responsible.position || 'Funcionario a cargo'"></p>
-                                        <p class="text-[10px] text-zinc-400 font-mono" x-text="'DNI ' + currentUnit.responsible.dni"></p>
-                                    </div>
-                                </div>
-                            </template>
-                            <template x-if="currentUnit && !currentUnit.responsible">
-                                <p class="text-xs italic text-zinc-400 py-1">Sin responsable asignado actualmente.</p>
-                            </template>
-                        </div>
-
-                        {{-- Personal Adscrito --}}
-                        <div class="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/70 flex flex-col justify-between">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Personal Registrado</span>
-                            <div class="mt-2 flex items-baseline gap-2">
-                                <span class="text-2xl font-bold font-mono text-zinc-900" x-text="currentUnit && currentUnit.employees ? currentUnit.employees.length : 0"></span>
-                                <span class="text-xs text-zinc-500">trabajadores adscritos</span>
-                            </div>
-                        </div>
-
-                        {{-- Activos OTI --}}
-                        <div class="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/70 flex flex-col justify-between">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Activos Tecnológicos</span>
-                            <div class="mt-2 flex items-baseline gap-2">
-                                <span class="text-2xl font-bold font-mono text-blue-700" x-text="currentUnit && currentUnit.assets ? currentUnit.assets.length : 0"></span>
-                                <span class="text-xs text-zinc-500">equipos en custodia OTI</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Subunidades Dependientes Directas --}}
-                    <div x-show="currentUnit && currentUnit.children && currentUnit.children.length > 0">
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Subunidades Dependientes (<span x-text="currentUnit ? currentUnit.children.length : 0"></span>)
-                            </h3>
-                            <span class="text-[10px] text-zinc-400">Haz clic en cualquiera para navegar en el árbol</span>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                            <template x-for="child in (currentUnit ? currentUnit.children : [])" :key="child.id">
-                                <div @click="selectUnit(child.id)"
-                                     class="p-2.5 rounded-lg border border-zinc-200/70 bg-white hover:bg-zinc-50 hover:border-zinc-300 transition-all cursor-pointer flex items-center justify-between gap-2 group">
-                                    <div class="min-w-0">
-                                        <p class="font-medium text-zinc-800 group-hover:text-zinc-950 truncate" x-text="child.name"></p>
-                                        <p class="text-[10px] font-mono text-zinc-400" x-text="child.type_label"></p>
-                                    </div>
-                                    <span class="text-zinc-300 group-hover:text-zinc-700 text-xs">&rarr;</span>
+                {{-- Subunidades directas --}}
+                <template x-if="selectedUnit && selectedUnit.children && selectedUnit.children.length > 0">
+                    <div>
+                        <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2"
+                              x-text="'Subunidades Dependientes (' + selectedUnit.children.length + ')'"></span>
+                        <div class="space-y-1 max-h-40 overflow-y-auto pr-1">
+                            <template x-for="child in selectedUnit.children" :key="child.id">
+                                <div @click="openInspector(child.id); centerOnNode(child.id)"
+                                     class="p-2 rounded-lg bg-zinc-50 hover:bg-zinc-100 border border-zinc-200/60 cursor-pointer flex items-center justify-between transition-colors">
+                                    <span class="font-medium text-zinc-800 truncate" x-text="child.name"></span>
+                                    <span class="text-[10px] font-mono text-zinc-400" x-text="child.type_label"></span>
                                 </div>
                             </template>
                         </div>
                     </div>
+                </template>
 
-                    {{-- Personal Adscrito a la Dependencia --}}
+                {{-- Personal Adscrito --}}
+                <template x-if="selectedUnit && selectedUnit.employees && selectedUnit.employees.length > 0">
                     <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Directorio de Personal (<span x-text="currentUnit && currentUnit.employees ? currentUnit.employees.length : 0"></span>)
-                            </h3>
+                        <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2"
+                              x-text="'Personal en esta oficina (' + selectedUnit.employees.length + ')'"></span>
+                        <div class="space-y-1 max-h-36 overflow-y-auto pr-1">
+                            <template x-for="emp in selectedUnit.employees" :key="emp.id">
+                                <div class="p-2 rounded-lg bg-zinc-50 border border-zinc-200/60 flex items-center justify-between">
+                                    <div class="min-w-0 pr-2">
+                                        <p class="font-semibold text-zinc-900 truncate" x-text="emp.name"></p>
+                                        <p class="text-[10px] text-zinc-400 truncate" x-text="emp.position || 'Empleado'"></p>
+                                    </div>
+                                    <a :href="emp.show_url" class="text-zinc-500 hover:text-zinc-900 text-[10px] font-medium shrink-0">Ver &rarr;</a>
+                                </div>
+                            </template>
                         </div>
-
-                        <template x-if="currentUnit && currentUnit.employees && currentUnit.employees.length > 0">
-                            <div class="rounded-xl border border-zinc-200/80 overflow-hidden bg-white">
-                                <table class="w-full text-left border-collapse text-xs">
-                                    <thead class="bg-zinc-50/70 border-b border-zinc-200/80 text-[10px] font-semibold uppercase text-zinc-400 tracking-wider">
-                                        <tr>
-                                            <th class="py-2 px-3">Trabajador</th>
-                                            <th class="py-2 px-3">Cargo</th>
-                                            <th class="py-2 px-3">DNI</th>
-                                            <th class="py-2 px-3 text-right">Ficha</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-zinc-200/60">
-                                        <template x-for="emp in currentUnit.employees" :key="emp.id">
-                                            <tr class="hover:bg-zinc-50/70 transition-colors">
-                                                <td class="py-2 px-3 font-medium text-zinc-900">
-                                                    <span x-text="emp.name"></span>
-                                                    <template x-if="emp.is_technician">
-                                                        <span class="ml-1.5 px-1.5 py-0.2 rounded text-[9px] bg-amber-50 text-amber-700 border border-amber-200">Técnico OTI</span>
-                                                    </template>
-                                                </td>
-                                                <td class="py-2 px-3 text-zinc-500" x-text="emp.position || '—'"></td>
-                                                <td class="py-2 px-3 font-mono text-zinc-600" x-text="emp.dni"></td>
-                                                <td class="py-2 px-3 text-right">
-                                                    <a :href="emp.show_url" class="text-zinc-500 hover:text-zinc-900 text-[11px] font-medium">Ver &rarr;</a>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </template>
-
-                        <template x-if="currentUnit && (!currentUnit.employees || currentUnit.employees.length === 0)">
-                            <div class="p-4 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 text-center text-zinc-400 text-xs">
-                                No hay personal registrado directamente en esta oficina.
-                            </div>
-                        </template>
                     </div>
+                </template>
 
-                    {{-- Equipos y Activos OTI --}}
+                {{-- Activos OTI --}}
+                <template x-if="selectedUnit && selectedUnit.assets && selectedUnit.assets.length > 0">
                     <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                                Equipos Informáticos y Activos (<span x-text="currentUnit && currentUnit.assets ? currentUnit.assets.length : 0"></span>)
-                            </h3>
+                        <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2"
+                              x-text="'Equipos informáticos (' + selectedUnit.assets.length + ')'"></span>
+                        <div class="space-y-1 max-h-36 overflow-y-auto pr-1">
+                            <template x-for="asset in selectedUnit.assets" :key="asset.id">
+                                <div class="p-2 rounded-lg bg-zinc-50 border border-zinc-200/60 flex items-center justify-between">
+                                    <div class="min-w-0 pr-2">
+                                        <p class="font-semibold text-zinc-900 truncate" x-text="asset.name"></p>
+                                        <p class="text-[10px] font-mono text-zinc-400" x-text="(asset.internal_code || 'S/C') + ' • ' + asset.type_label"></p>
+                                    </div>
+                                    <a :href="asset.show_url" class="text-zinc-500 hover:text-zinc-900 text-[10px] font-medium shrink-0">Ver &rarr;</a>
+                                </div>
+                            </template>
                         </div>
-
-                        <template x-if="currentUnit && currentUnit.assets && currentUnit.assets.length > 0">
-                            <div class="rounded-xl border border-zinc-200/80 overflow-hidden bg-white">
-                                <table class="w-full text-left border-collapse text-xs">
-                                    <thead class="bg-zinc-50/70 border-b border-zinc-200/80 text-[10px] font-semibold uppercase text-zinc-400 tracking-wider">
-                                        <tr>
-                                            <th class="py-2 px-3">Código</th>
-                                            <th class="py-2 px-3">Equipo</th>
-                                            <th class="py-2 px-3">Tipo / Marca</th>
-                                            <th class="py-2 px-3">Custodio</th>
-                                            <th class="py-2 px-3 text-right">Ficha</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-zinc-200/60">
-                                        <template x-for="asset in currentUnit.assets" :key="asset.id">
-                                            <tr class="hover:bg-zinc-50/70 transition-colors">
-                                                <td class="py-2 px-3 font-mono font-medium text-zinc-900" x-text="asset.internal_code || '—'"></td>
-                                                <td class="py-2 px-3 font-medium text-zinc-800" x-text="asset.name"></td>
-                                                <td class="py-2 px-3 text-zinc-500" x-text="(asset.type_label || '') + ' ' + (asset.brand || '')"></td>
-                                                <td class="py-2 px-3 text-zinc-600" x-text="asset.responsible_name || 'Sin custodio'"></td>
-                                                <td class="py-2 px-3 text-right">
-                                                    <a :href="asset.show_url" class="text-zinc-500 hover:text-zinc-900 text-[11px] font-medium">Ver &rarr;</a>
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </template>
-
-                        <template x-if="currentUnit && (!currentUnit.assets || currentUnit.assets.length === 0)">
-                            <div class="p-4 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 text-center text-zinc-400 text-xs">
-                                Sin activos informáticos registrados en esta dependencia.
-                            </div>
-                        </template>
                     </div>
-
-                </div>
-
+                </template>
             </div>
 
+            {{-- Pie del Inspector con Acciones --}}
+            <div class="p-3 border-t border-zinc-200 bg-zinc-50/70 flex items-center gap-2">
+                <a :href="selectedUnit ? selectedUnit.show_url : '#'"
+                   class="flex-1 text-center py-2 px-3 rounded-lg text-xs font-medium bg-zinc-900 text-white hover:bg-zinc-800 transition-colors shadow-xs">
+                    Ver Ficha Completa &rarr;
+                </a>
+                @can('org-unit.edit')
+                <a :href="selectedUnit ? selectedUnit.edit_url : '#'"
+                   class="py-2 px-3 rounded-lg text-xs font-medium bg-white border border-zinc-200 text-zinc-700 hover:bg-zinc-50 transition-colors">
+                    Editar
+                </a>
+                @endcan
+            </div>
         </div>
 
     </div>
@@ -459,94 +501,240 @@
 
 </div>
 
-{{-- Alpine Controller para Workspace en Una Sola Pantalla --}}
+{{-- Script del Grafo Interactivo de Nodos y Ramas --}}
 <script>
-    function orgSingleScreen() {
+    function orgGraph(treeData) {
         return {
-            viewMode: '{{ request()->hasAny(['search', 'type', 'status']) ? 'table' : 'tree' }}',
-            searchTree: '',
-            matchesCount: 0,
+            viewMode: 'graph',
+            rawTree: treeData,
+
+            // Canvas Pan y Zoom
+            panX: 70,
+            panY: 280,
+            zoom: 0.85,
+            isDragging: false,
+            dragStartX: 0,
+            dragStartY: 0,
+
+            // Estado de Ramas y Nodos
+            expanded: { 1: true, 6: true }, // Alcaldía y Gerencia Municipal expandidas inicialmente
+            visibleNodes: [],
+            visibleLinks: [],
+            activeNodeId: 1,
+            highlightedBranch: [],
+
+            // Slide-over Inspector
+            inspectorOpen: false,
+            selectedUnit: null,
+
+            // Búsqueda
+            searchQuery: '',
             matchedIds: [],
-            expanded: { 1: true, 6: true },
-            selectedId: 1, // Por defecto Alcaldía
-            currentUnit: null,
-            loading: false,
 
             init() {
                 this.expanded[1] = true;
                 this.expanded[6] = true;
-                this.selectUnit(1);
+                this.recalculateLayout();
             },
 
-            toggleExpand(id) {
-                this.expanded[id] = !this.expanded[id];
-            },
+            recalculateLayout() {
+                let leafCounter = 0;
+                const nodes = [];
+                const links = [];
 
-            isExpanded(id) {
-                if (this.searchTree.trim().length > 1) {
-                    return true;
+                const traverse = (node, depth, parentPos) => {
+                    const isNodeExpanded = !!this.expanded[node.id];
+                    const hasChildren = node.children && node.children.length > 0;
+                    const showChildren = isNodeExpanded && hasChildren;
+
+                    const x = 70 + (depth - 1) * 270;
+                    let y;
+
+                    if (showChildren) {
+                        const childrenY = [];
+                        for (const child of node.children) {
+                            const childPos = traverse(child, depth + 1, { x, y: 0, id: node.id });
+                            childrenY.push(childPos.y);
+                        }
+                        y = (childrenY[0] + childrenY[childrenY.length - 1]) / 2;
+                    } else {
+                        y = leafCounter * 115;
+                        leafCounter++;
+                    }
+
+                    const nodePos = {
+                        ...node,
+                        x,
+                        y,
+                        depth,
+                        isExpanded: isNodeExpanded,
+                        hasChildren
+                    };
+                    nodes.push(nodePos);
+
+                    if (parentPos) {
+                        const x1 = parentPos.x + 32;
+                        const y1 = parentPos.y;
+                        const x2 = x - 32;
+                        const y2 = y;
+                        const cx = (x1 + x2) / 2;
+                        const path = `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`;
+                        links.push({
+                            id: `${parentPos.id}->${node.id}`,
+                            parentId: parentPos.id,
+                            childId: node.id,
+                            path
+                        });
+                    }
+
+                    return nodePos;
+                };
+
+                for (const root of this.rawTree) {
+                    traverse(root, 1, null);
                 }
-                return !!this.expanded[id];
+
+                this.visibleNodes = nodes;
+                this.visibleLinks = links;
+            },
+
+            toggleBranch(nodeId) {
+                this.expanded[nodeId] = !this.expanded[nodeId];
+                this.recalculateLayout();
             },
 
             expandAll() {
-                const nodes = document.querySelectorAll('.tree-item-wrapper');
-                nodes.forEach(el => {
-                    const id = parseInt(el.getAttribute('data-node-id'));
-                    if (id) this.expanded[id] = true;
-                });
+                const expandRecursive = (list) => {
+                    for (const item of list) {
+                        this.expanded[item.id] = true;
+                        if (item.children) expandRecursive(item.children);
+                    }
+                };
+                expandRecursive(this.rawTree);
+                this.recalculateLayout();
             },
 
             collapseAll() {
                 this.expanded = { 1: true };
+                this.recalculateLayout();
+                this.resetView();
             },
 
-            expandToLevel(maxLevel) {
-                // Expande niveles superiores
-                this.expanded = { 1: true, 6: true };
+            // Panning y Zoom
+            startDrag(e) {
+                if (e.target.closest('.node-interactive')) return;
+                this.isDragging = true;
+                this.dragStartX = e.clientX - this.panX;
+                this.dragStartY = e.clientY - this.panY;
             },
 
-            onSearchTree() {
-                const q = this.searchTree.trim().toLowerCase();
+            onDrag(e) {
+                if (!this.isDragging) return;
+                this.panX = e.clientX - this.dragStartX;
+                this.panY = e.clientY - this.dragStartY;
+            },
+
+            stopDrag() {
+                this.isDragging = false;
+            },
+
+            onWheel(e) {
+                const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+                this.zoom = Math.min(Math.max(this.zoom * zoomFactor, 0.35), 1.8);
+            },
+
+            zoomIn() {
+                this.zoom = Math.min(this.zoom * 1.15, 1.8);
+            },
+
+            zoomOut() {
+                this.zoom = Math.max(this.zoom * 0.85, 0.35);
+            },
+
+            resetView() {
+                this.centerOnNode(1);
+            },
+
+            centerOnNode(nodeId) {
+                const node = this.visibleNodes.find(n => n.id === nodeId);
+                if (node) {
+                    this.panX = 180 - node.x * this.zoom;
+                    this.panY = 280 - node.y * this.zoom;
+                }
+            },
+
+            highlightNode(nodeId) {
+                const branch = [nodeId];
+                let current = this.visibleLinks.find(l => l.childId === nodeId);
+                while (current) {
+                    branch.push(current.parentId);
+                    current = this.visibleLinks.find(l => l.childId === current.parentId);
+                }
+                this.highlightedBranch = branch;
+            },
+
+            clearHighlight() {
+                this.highlightedBranch = [];
+            },
+
+            onSearch() {
+                const q = this.searchQuery.trim().toLowerCase();
                 if (q.length < 2) {
                     this.matchedIds = [];
-                    this.matchesCount = 0;
                     return;
                 }
+
                 const matches = [];
-                const nodes = document.querySelectorAll('.tree-item-wrapper');
-                nodes.forEach(el => {
-                    const name = el.getAttribute('data-node-name') || '';
-                    const code = el.getAttribute('data-node-code') || '';
-                    const titular = el.getAttribute('data-node-titular') || '';
-                    const id = parseInt(el.getAttribute('data-node-id'));
-                    if (name.includes(q) || code.includes(q) || titular.includes(q)) {
-                        matches.push(id);
+                const expandParents = (list, parentChain = []) => {
+                    for (const item of list) {
+                        const name = (item.name || '').toLowerCase();
+                        const code = (item.code || '').toLowerCase();
+                        const titular = item.responsible ? (item.responsible.name || '').toLowerCase() : '';
+
+                        if (name.includes(q) || code.includes(q) || titular.includes(q)) {
+                            matches.push(item.id);
+                            // Auto expande la ruta completa hasta la raíz
+                            for (const pId of parentChain) {
+                                this.expanded[pId] = true;
+                            }
+                        }
+
+                        if (item.children && item.children.length > 0) {
+                            expandParents(item.children, [...parentChain, item.id]);
+                        }
                     }
-                });
+                };
+
+                expandParents(this.rawTree);
                 this.matchedIds = matches;
-                this.matchesCount = matches.length;
+                this.recalculateLayout();
+
+                // Centra suavemente en el primer nodo coincidente
+                if (matches.length > 0) {
+                    setTimeout(() => this.centerOnNode(matches[0]), 100);
+                }
             },
 
-            isMatch(id) {
-                return this.matchedIds.includes(id);
+            isMatch(nodeId) {
+                return this.matchedIds.includes(nodeId);
             },
 
-            async selectUnit(id) {
-                if (!id) return;
-                this.selectedId = id;
-                this.loading = true;
+            async openInspector(nodeId) {
+                this.activeNodeId = nodeId;
+                this.inspectorOpen = true;
 
                 try {
-                    const res = await fetch('/organizational-units/' + id + '/quick-info');
+                    const res = await fetch('/organizational-units/' + nodeId + '/quick-info');
                     if (res.ok) {
-                        this.currentUnit = await res.json();
+                        this.selectedUnit = await res.json();
                     }
                 } catch (e) {
-                    console.error('Error loading unit info:', e);
-                } finally {
-                    this.loading = false;
+                    console.error('Error fetching unit info:', e);
                 }
+            },
+
+            closeInspector() {
+                this.inspectorOpen = false;
             }
         };
     }
