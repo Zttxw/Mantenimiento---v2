@@ -19,6 +19,49 @@ class OrganizationalUnitService
             ->get();
     }
 
+    public function getTreeArray(): array
+    {
+        $all = OrganizationalUnit::with(['responsible:id,full_name,position,dni,email', 'parent:id,name'])
+            ->withCount(['empoyees as employees_count', 'assets as assets_count'])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $grouped = $all->groupBy('parent_id');
+
+        $formatNode = function ($unit, $depth = 1) use (&$formatNode, $grouped) {
+            $children = ($grouped->get($unit->id) ?? collect())->map(fn ($child) => $formatNode($child, $depth + 1))->values()->all();
+
+            return [
+                'id' => $unit->id,
+                'name' => $unit->name,
+                'code' => $unit->code,
+                'type' => $unit->type->value,
+                'type_label' => $unit->type->label(),
+                'level' => $depth,
+                'parent_id' => $unit->parent_id,
+                'parent_name' => $unit->parent?->name,
+                'is_active' => (bool) $unit->is_active,
+                'employees_count' => (int) $unit->employees_count,
+                'assets_count' => (int) $unit->assets_count,
+                'responsible' => $unit->responsible ? [
+                    'id' => $unit->responsible->id,
+                    'name' => $unit->responsible->full_name,
+                    'position' => $unit->responsible->position,
+                    'dni' => $unit->responsible->dni,
+                    'email' => $unit->responsible->email,
+                ] : null,
+                'show_url' => route('organizational-units.show', $unit),
+                'edit_url' => route('organizational-units.edit', $unit),
+                'children' => $children,
+            ];
+        };
+
+        $roots = $grouped->get(null) ?? collect();
+
+        return $roots->map(fn ($root) => $formatNode($root, 1))->values()->all();
+    }
+
     public function getPaginated(array $filters = []): LengthAwarePaginator
     {
         return OrganizationalUnit::with(['parent', 'responsible'])

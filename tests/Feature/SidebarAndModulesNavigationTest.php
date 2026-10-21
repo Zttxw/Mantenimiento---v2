@@ -97,6 +97,10 @@ class SidebarAndModulesNavigationTest extends TestCase
         $response->assertSee('Oficinas y Dependencias');
         $response->assertSee('Total Unidades');
         $response->assertSee('Unidades Activas');
+        $response->assertSee('Organigrama Institucional (Estructura)');
+        $response->assertSee('Directorio Tabular (Lista)');
+        $response->assertSee('Expandir Todo');
+        $response->assertSee('Colapsar Todo');
     }
 
     public function test_employees_index_renders_cleanly_with_stats(): void
