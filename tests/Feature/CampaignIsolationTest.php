@@ -311,4 +311,42 @@ class CampaignIsolationTest extends TestCase
         $response->assertStatus(200);
         $this->assertEquals(0, MaintenanceCase::count());
     }
+
+    public function test_campaign_show_view_renders_successfully_with_cloaked_modals_and_assets(): void
+    {
+        $campaign = MaintenanceCampaign::create([
+            'code' => 'CAMP-SHOW-01',
+            'name' => 'Campaña Pruebas Renderizado',
+            'type' => 'preventivo',
+            'status' => CampaignStatus::EN_CURSO->value,
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addDays(30)->toDateString(),
+            'created_by' => $this->coordinador->id,
+        ]);
+
+        $asset = Asset::create([
+            'uuid' => (string) Str::uuid(),
+            'internal_code' => 'EQ-SHOW-01',
+            'patrimonial_code' => '74089999001',
+            'name' => 'Computadora Dell Optiplex',
+            'asset_type' => 'computadora',
+            'status' => 'en_uso',
+            'condition' => 'bueno',
+            'organizational_unit_id' => $this->unit->id,
+        ]);
+
+        CampaignAsset::create([
+            'campaign_id' => $campaign->id,
+            'asset_id' => $asset->id,
+            'status' => CampaignAssetStatus::PENDIENTE->value,
+        ]);
+
+        $response = $this->actingAs($this->coordinador)
+            ->get(route('campaigns.show', $campaign));
+
+        $response->assertStatus(200);
+        $response->assertSee('Campaña Pruebas Renderizado');
+        $response->assertSee('CAMP-SHOW-01');
+        $response->assertSee('[x-cloak]');
+    }
 }

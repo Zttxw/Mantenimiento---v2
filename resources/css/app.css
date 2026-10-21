@@ -37,6 +37,10 @@
         -webkit-font-smoothing: antialiased;
     }
 
+    [x-cloak] {
+        display: none !important;
+    }
+
     body {
         @apply bg-canvas text-slate-900 font-sans;
     }

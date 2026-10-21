@@ -39,6 +39,30 @@
             ->filter()
             ->unique()
             ->values();
+
+        $assetsData = $campaign->campaignAssets->map(function ($ca) {
+            return [
+                'id' => $ca->id,
+                'asset_id' => $ca->asset_id,
+                'status' => $ca->status->value,
+                'attended_type' => $ca->attended_type,
+                'attended_date' => $ca->attended_date?->format('d/m'),
+                'full_date' => $ca->attended_date?->format('Y-m-d'),
+                'technician' => $ca->attendedByEmployee?->full_name ?? $ca->assignedTechnician?->full_name ?? '—',
+                'technician_id' => $ca->attended_by_employee_id ?? $ca->assigned_technician_id,
+                'patrimonial_code' => $ca->asset->patrimonial_code ?? '',
+                'internal_code' => $ca->asset->internal_code ?? '',
+                'name' => $ca->asset->name,
+                'type' => $ca->asset->asset_type?->value ?? 'otro',
+                'unit_id' => $ca->asset->organizational_unit_id ?? 0,
+                'unit_name' => $ca->asset->organizationalUnit?->name ?? '—',
+                'responsible_id' => $ca->asset->responsible_employee_id ?? '',
+                'responsible_name' => $ca->asset->responsible?->full_name ?? '—',
+                'condition' => $ca->asset_condition_after ?? $ca->asset->condition?->value ?? 'bueno',
+                'tasks' => $ca->checklist_tasks ?? ['sopleteado_limpieza', 'temporales_optimizacion', 'licenciamiento_software'],
+                'notes' => $ca->notes ?? '',
+            ];
+        })->values();
     @endphp
 
     <div x-data="{
@@ -48,6 +72,7 @@
         unitFilter: 'all',
         page: 1,
         perPage: 50,
+        assets: @js($assetsData),
         attendModalOpen: false,
         quickAssetModalOpen: false,
         bulkUnitModalOpen: false,
@@ -66,18 +91,18 @@
             tasks: [],
             notes: ''
         },
-        openAttendModal(ca, asset) {
-            this.activeCa.id = ca.id;
-            this.activeCa.name = asset.name;
-            this.activeCa.internalCode = asset.internal_code || '';
-            this.activeCa.patrimonialCode = asset.patrimonial_code || '';
-            this.activeCa.unitId = asset.organizational_unit_id || '';
-            this.activeCa.responsibleId = asset.responsible_employee_id || '';
-            this.activeCa.condition = asset.condition || 'bueno';
-            this.activeCa.technicianId = ca.attended_by_employee_id || ca.assigned_technician_id || '{{ auth()->user()->employee?->id }}';
-            this.activeCa.date = ca.attended_date ? ca.attended_date.substring(0, 10) : '{{ now()->toDateString() }}';
-            this.activeCa.tasks = ca.checklist_tasks || ['sopleteado_limpieza', 'temporales_optimizacion', 'licenciamiento_software'];
-            this.activeCa.notes = ca.notes || '';
+        openAttendModal(item) {
+            this.activeCa.id = item.id;
+            this.activeCa.name = item.name;
+            this.activeCa.internalCode = item.internal_code || '';
+            this.activeCa.patrimonialCode = item.patrimonial_code || '';
+            this.activeCa.unitId = item.unit_id || '';
+            this.activeCa.responsibleId = item.responsible_id || '';
+            this.activeCa.condition = item.condition || 'bueno';
+            this.activeCa.technicianId = item.technician_id || '{{ auth()->user()->employee?->id }}';
+            this.activeCa.date = item.full_date || '{{ now()->toDateString() }}';
+            this.activeCa.tasks = Array.isArray(item.tasks) ? [...item.tasks] : ['sopleteado_limpieza', 'temporales_optimizacion', 'licenciamiento_software'];
+            this.activeCa.notes = item.notes || '';
             this.attendModalOpen = true;
         },
         toggleTask(task) {
@@ -88,14 +113,29 @@
                 this.activeCa.tasks.push(task);
             }
         },
-        matchesFilter(caStatus, assetType, unitId, textContent) {
-            if (this.statusFilter === 'pending' && caStatus === 'atendido') return false;
-            if (this.statusFilter === 'attended' && caStatus !== 'atendido') return false;
-            if (this.typeFilter !== 'all' && assetType !== this.typeFilter) return false;
-            if (this.unitFilter !== 'all' && String(unitId) !== String(this.unitFilter)) return false;
+        get filteredAssets() {
+            const q = this.search.trim().toLowerCase();
+            return this.assets.filter(item => {
+                if (this.statusFilter === 'pending' && item.status === 'atendido') return false;
+                if (this.statusFilter === 'attended' && item.status !== 'atendido') return false;
+                if (this.typeFilter !== 'all' && item.type !== this.typeFilter) return false;
+                if (this.unitFilter !== 'all' && String(item.unit_id) !== String(this.unitFilter)) return false;
 
-            if (!this.search.trim()) return true;
-            return textContent.toLowerCase().includes(this.search.toLowerCase().trim());
+                if (!q) return true;
+                const text = (item.patrimonial_code + ' ' + item.internal_code + ' ' + item.name + ' ' + item.unit_name + ' ' + item.responsible_name + ' ' + item.technician).toLowerCase();
+                return text.includes(q);
+            });
+        },
+        get totalPages() {
+            return Math.ceil(this.filteredAssets.length / this.perPage) || 1;
+        },
+        get pagedAssets() {
+            const start = (this.page - 1) * this.perPage;
+            return this.filteredAssets.slice(start, start + this.perPage);
+        },
+        setFilter(key, val) {
+            this[key] = val;
+            this.page = 1;
         }
     }">
 
@@ -282,19 +322,19 @@
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
             {{-- Segmentos de Estado --}}
             <div class="flex items-center gap-1 text-xs">
-                <button @click="statusFilter = 'all'"
+                <button @click="setFilter('statusFilter', 'all')"
                         :class="statusFilter === 'all' ? 'bg-zinc-900 text-white font-medium' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'"
-                        class="px-3 py-1.5 rounded-lg transition-colors">
+                        class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
                     Todos ({{ $totalAssets }})
                 </button>
-                <button @click="statusFilter = 'pending'"
+                <button @click="setFilter('statusFilter', 'pending')"
                         :class="statusFilter === 'pending' ? 'bg-zinc-900 text-white font-medium' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'"
-                        class="px-3 py-1.5 rounded-lg transition-colors">
+                        class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
                     Pendientes ({{ $pendientes }})
                 </button>
-                <button @click="statusFilter = 'attended'"
+                <button @click="setFilter('statusFilter', 'attended')"
                         :class="statusFilter === 'attended' ? 'bg-zinc-900 text-white font-medium' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'"
-                        class="px-3 py-1.5 rounded-lg transition-colors">
+                        class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
                     Atendidos ({{ $atendidos }})
                 </button>
             </div>
@@ -302,7 +342,7 @@
             {{-- Filtros Select y Buscador --}}
             <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                 {{-- Filtro Tipo de Hardware --}}
-                <select x-model="typeFilter"
+                <select x-model="typeFilter" @change="page = 1"
                         class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900">
                     <option value="all">Todos los tipos</option>
                     @foreach ($campaignTypes as $cType)
@@ -311,7 +351,7 @@
                 </select>
 
                 {{-- Filtro Oficina --}}
-                <select x-model="unitFilter"
+                <select x-model="unitFilter" @change="page = 1"
                         class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 max-w-[160px] truncate">
                     <option value="all">Todas las oficinas</option>
                     @foreach ($campaignUnits as $u)
@@ -322,7 +362,7 @@
                 {{-- Buscador Instantáneo --}}
                 <div class="relative w-full sm:w-64">
                     <svg class="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input type="text" x-model="search" placeholder="Sticker, equipo u oficina..."
+                    <input type="text" x-model="search" @input="page = 1" placeholder="Sticker, equipo u oficina..."
                            class="w-full pl-8 pr-3 py-1.5 bg-white rounded-lg border border-zinc-200 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900">
                 </div>
             </div>
@@ -345,152 +385,164 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100">
-                        @forelse ($campaign->campaignAssets as $ca)
-                        @php
-                            $isAttended = $ca->status->value === 'atendido';
-                            $assetTypeVal = $ca->asset->asset_type?->value ?? 'otro';
-                            $unitId = $ca->asset->organizational_unit_id ?? 0;
+                        <template x-for="item in pagedAssets" :key="item.id">
+                            <tr class="hover:bg-zinc-50/75 transition-colors">
+                                {{-- 1. Sticker Patrimonial --}}
+                                <td class="py-3 px-4">
+                                    <template x-if="item.patrimonial_code">
+                                        <span class="font-mono text-xs font-semibold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200" x-text="item.patrimonial_code"></span>
+                                    </template>
+                                    <template x-if="!item.patrimonial_code">
+                                        <span class="font-mono text-[11px] text-zinc-400 italic">Sin sticker</span>
+                                    </template>
+                                </td>
 
-                            $searchContent = strtolower(
-                                ($ca->asset->patrimonial_code ?? '') . ' ' .
-                                ($ca->asset->internal_code ?? '') . ' ' .
-                                ($ca->asset->name ?? '') . ' ' .
-                                ($ca->asset->brand ?? '') . ' ' .
-                                ($ca->asset->model ?? '') . ' ' .
-                                ($ca->asset->organizationalUnit?->name ?? '') . ' ' .
-                                ($ca->asset->responsible?->full_name ?? '') . ' ' .
-                                ($ca->attendedByEmployee?->full_name ?? '') . ' ' .
-                                ($ca->assignedTechnician?->full_name ?? '')
-                            );
-                        @endphp
-                        <tr x-show="matchesFilter('{{ $ca->status->value }}', '{{ $assetTypeVal }}', '{{ $unitId }}', '{{ addslashes($searchContent) }}')"
-                            class="hover:bg-zinc-50/75 transition-colors">
+                                {{-- 2. Activo y Hardware (Con símbolo preciso) --}}
+                                <td class="py-3 px-4">
+                                    <div class="flex items-center gap-2.5">
+                                        <template x-if="item.type === 'impresora'">
+                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 6.75h10.5V3.75H6.75v3zm10.5 4.5h.008v.008h-.008v-.008zM4.5 9h15a1.5 1.5 0 011.5 1.5v6a1.5 1.5 0 01-1.5 1.5H4.5A1.5 1.5 0 013 16.5v-6A1.5 1.5 0 014.5 9zm2.25 5.25h10.5v6H6.75v-6z"/></svg>
+                                        </template>
+                                        <template x-if="item.type === 'monitor'">
+                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 5.25h16.5A1.5 1.5 0 0121.75 6.75v9a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-9a1.5 1.5 0 011.5-1.5zm6 12v3m4.5-3v3m-6.75 0h9"/></svg>
+                                        </template>
+                                        <template x-if="item.type === 'laptop'">
+                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l1.5-9A2.25 2.25 0 016 4.5h12a2.25 2.25 0 012.25 2.25l1.5 9m-19.5 0h19.5m-19.5 0A2.25 2.25 0 004.5 18h15a2.25 2.25 0 002.25-2.25m-19.5 0v.75A2.25 2.25 0 004.5 21h15a2.25 2.25 0 002.25-2.25v-.75"/></svg>
+                                        </template>
+                                        <template x-if="item.type === 'escaner'">
+                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5M3.75 17.25h16.5m-16.5 0a2.25 2.25 0 002.25 2.25h12a2.25 2.25 0 002.25-2.25m-16.5 0V9.75m16.5 7.5V9.75m0 0a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25v7.5m16.5-7.5H3.75"/></svg>
+                                        </template>
+                                        <template x-if="item.type !== 'impresora' && item.type !== 'monitor' && item.type !== 'laptop' && item.type !== 'escaner'">
+                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
+                                        </template>
 
-                            {{-- 1. Sticker Patrimonial --}}
-                            <td class="py-3 px-4">
-                                @if ($ca->asset->patrimonial_code)
-                                    <span class="font-mono text-xs font-semibold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200">
-                                        {{ $ca->asset->patrimonial_code }}
-                                    </span>
-                                @else
-                                    <span class="font-mono text-[11px] text-zinc-400 italic">Sin sticker</span>
-                                @endif
-                            </td>
-
-                            {{-- 2. Activo y Hardware (Con símbolo preciso) --}}
-                            <td class="py-3 px-4">
-                                <div class="flex items-center gap-2.5">
-                                    {{-- Símbolo preciso según hardware --}}
-                                    @if ($assetTypeVal === 'impresora')
-                                        {{-- Símbolo Impresora --}}
-                                        <svg class="w-4 h-4 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 6.75h10.5V3.75H6.75v3zm10.5 4.5h.008v.008h-.008v-.008zM4.5 9h15a1.5 1.5 0 011.5 1.5v6a1.5 1.5 0 01-1.5 1.5H4.5A1.5 1.5 0 013 16.5v-6A1.5 1.5 0 014.5 9zm2.25 5.25h10.5v6H6.75v-6z"/></svg>
-                                    @elseif ($assetTypeVal === 'monitor')
-                                        {{-- Símbolo Monitor --}}
-                                        <svg class="w-4 h-4 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 5.25h16.5A1.5 1.5 0 0121.75 6.75v9a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-9a1.5 1.5 0 011.5-1.5zm6 12v3m4.5-3v3m-6.75 0h9"/></svg>
-                                    @elseif ($assetTypeVal === 'laptop')
-                                        {{-- Símbolo Laptop --}}
-                                        <svg class="w-4 h-4 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l1.5-9A2.25 2.25 0 016 4.5h12a2.25 2.25 0 012.25 2.25l1.5 9m-19.5 0h19.5m-19.5 0A2.25 2.25 0 004.5 18h15a2.25 2.25 0 002.25-2.25m-19.5 0v.75A2.25 2.25 0 004.5 21h15a2.25 2.25 0 002.25-2.25v-.75"/></svg>
-                                    @elseif ($assetTypeVal === 'escaner')
-                                        {{-- Símbolo Escáner --}}
-                                        <svg class="w-4 h-4 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5M3.75 17.25h16.5m-16.5 0a2.25 2.25 0 002.25 2.25h12a2.25 2.25 0 002.25-2.25m-16.5 0V9.75m16.5 7.5V9.75m0 0a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25v7.5m16.5-7.5H3.75"/></svg>
-                                    @else
-                                        {{-- Símbolo Computadora / PC Desktop --}}
-                                        <svg class="w-4 h-4 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
-                                    @endif
-
-                                    <div class="min-w-0">
-                                        <a href="{{ route('assets.show', $ca->asset) }}" class="font-medium text-zinc-900 hover:text-zinc-600 transition-colors block truncate max-w-[220px]">
-                                            {{ $ca->asset->name }}
-                                        </a>
-                                        <span class="font-mono text-[10px] text-zinc-400 block">{{ $ca->asset->internal_code }}</span>
+                                        <div class="min-w-0">
+                                            <a :href="'{{ url('assets') }}/' + item.asset_id"
+                                               class="font-medium text-zinc-900 hover:text-zinc-600 transition-colors block truncate max-w-[220px]"
+                                               x-text="item.name"></a>
+                                            <span class="font-mono text-[10px] text-zinc-400 block" x-text="item.internal_code"></span>
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
+                                </td>
 
-                            {{-- 3. Oficina --}}
-                            <td class="py-3 px-4">
-                                <span class="text-zinc-700 block truncate max-w-[190px]" title="{{ $ca->asset->organizationalUnit?->name }}">
-                                    {{ $ca->asset->organizationalUnit?->name ?? '—' }}
-                                </span>
-                            </td>
+                                {{-- 3. Oficina --}}
+                                <td class="py-3 px-4">
+                                    <span class="text-zinc-700 block truncate max-w-[190px]" :title="item.unit_name" x-text="item.unit_name"></span>
+                                </td>
 
-                            {{-- 4. Custodio --}}
-                            <td class="py-3 px-4">
-                                <span class="text-zinc-600 block truncate max-w-[170px]" title="{{ $ca->asset->responsible?->full_name }}">
-                                    {{ $ca->asset->responsible?->full_name ?? '—' }}
-                                </span>
-                            </td>
+                                {{-- 4. Custodio --}}
+                                <td class="py-3 px-4">
+                                    <span class="text-zinc-600 block truncate max-w-[170px]" :title="item.responsible_name" x-text="item.responsible_name"></span>
+                                </td>
 
-                            {{-- 5. Canal de Atención --}}
-                            <td class="py-3 px-4">
-                                @if ($isAttended)
-                                    <span class="font-mono text-[11px] {{ $ca->attended_type === 'agente' ? 'text-zinc-900 font-medium' : 'text-zinc-700' }}">
-                                        {{ $ca->attended_type === 'agente' ? 'Agente' : 'Manual' }}
-                                    </span>
-                                @else
-                                    <span class="text-zinc-300 font-mono text-[11px]">—</span>
-                                @endif
-                            </td>
+                                {{-- 5. Canal de Atención --}}
+                                <td class="py-3 px-4">
+                                    <template x-if="item.status === 'atendido'">
+                                        <span class="font-mono text-[11px]"
+                                              :class="item.attended_type === 'agente' ? 'text-zinc-900 font-medium' : 'text-zinc-700'"
+                                              x-text="item.attended_type === 'agente' ? 'Agente' : 'Manual'"></span>
+                                    </template>
+                                    <template x-if="item.status !== 'atendido'">
+                                        <span class="text-zinc-300 font-mono text-[11px]">—</span>
+                                    </template>
+                                </td>
 
-                            {{-- 6. Estado --}}
-                            <td class="py-3 px-4">
-                                @if ($isAttended)
-                                    <span class="inline-flex items-center gap-1.5 text-zinc-900 font-medium">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                        <span>Atendido</span>
-                                        <span class="font-mono text-[10px] text-zinc-400">· {{ $ca->attended_date?->format('d/m') }}</span>
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 text-zinc-400">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
-                                        <span>Pendiente</span>
-                                    </span>
-                                @endif
-                            </td>
+                                {{-- 6. Estado --}}
+                                <td class="py-3 px-4">
+                                    <template x-if="item.status === 'atendido'">
+                                        <span class="inline-flex items-center gap-1.5 text-zinc-900 font-medium">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            <span>Atendido</span>
+                                            <span class="font-mono text-[10px] text-zinc-400" x-text="item.attended_date ? '· ' + item.attended_date : ''"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="item.status !== 'atendido'">
+                                        <span class="inline-flex items-center gap-1.5 text-zinc-400">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
+                                            <span>Pendiente</span>
+                                        </span>
+                                    </template>
+                                </td>
 
-                            {{-- 7. Técnico --}}
-                            <td class="py-3 px-4">
-                                @php
-                                    $tech = $ca->attendedByEmployee ?? $ca->assignedTechnician;
-                                @endphp
-                                <span class="text-zinc-600 block truncate max-w-[140px]" title="{{ $tech?->full_name }}">
-                                    {{ $tech?->full_name ?? '—' }}
-                                </span>
-                            </td>
+                                {{-- 7. Técnico --}}
+                                <td class="py-3 px-4">
+                                    <span class="text-zinc-600 block truncate max-w-[140px]" :title="item.technician" x-text="item.technician"></span>
+                                </td>
 
-                            {{-- 8. Acción Directa --}}
-                            <td class="py-3 px-4 text-right">
-                                <div class="flex items-center justify-end gap-1.5">
-                                    @if ($isActive)
-                                    <button
-                                        @click="openAttendModal({{ $ca->toJson() }}, {{ $ca->asset->toJson() }})"
-                                        type="button"
-                                        class="px-2.5 py-1 rounded-md text-xs font-medium {{ $isAttended ? 'text-zinc-600 hover:bg-zinc-100' : 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-xs' }} transition-colors cursor-pointer">
-                                        {{ $isAttended ? 'Editar' : 'Atender' }}
-                                    </button>
-                                    @endif
-
-                                    @can('campaign.edit')
-                                    <form method="POST" action="{{ route('campaigns.assets.remove', [$campaign, $ca->asset_id]) }}"
-                                          onsubmit="return confirm('¿Quitar equipo de la campaña?')" class="inline">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="p-1 rounded text-zinc-300 hover:text-rose-600 transition-colors cursor-pointer" title="Quitar de campaña">
-                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                {{-- 8. Acción Directa --}}
+                                <td class="py-3 px-4 text-right">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        @if ($isActive)
+                                        <button
+                                            @click="openAttendModal(item)"
+                                            type="button"
+                                            :class="item.status === 'atendido' ? 'text-zinc-600 hover:bg-zinc-100' : 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-xs'"
+                                            class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer"
+                                            x-text="item.status === 'atendido' ? 'Editar' : 'Atender'">
                                         </button>
-                                    </form>
-                                    @endcan
-                                </div>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
+                                        @endif
+
+                                        @can('campaign.edit')
+                                        <form method="POST" :action="'{{ url('campaigns/' . $campaign->id . '/assets') }}/' + item.asset_id"
+                                              onsubmit="return confirm('¿Quitar equipo de la campaña?')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="p-1 rounded text-zinc-300 hover:text-rose-600 transition-colors cursor-pointer" title="Quitar de campaña">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            </button>
+                                        </form>
+                                        @endcan
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="filteredAssets.length === 0">
                             <td colspan="8" class="py-16 text-center text-zinc-400">
-                                Sin activos vinculados a esta campaña.
+                                No se encontraron activos con los filtros seleccionados.
                             </td>
                         </tr>
-                        @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Controles de Paginación Reactiva --}}
+            <div class="px-4 py-3 border-t border-zinc-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500 bg-zinc-50/50">
+                <div class="flex items-center gap-2">
+                    <span>Mostrando <span class="font-semibold text-zinc-800" x-text="filteredAssets.length === 0 ? 0 : ((page - 1) * perPage + 1)"></span> a <span class="font-semibold text-zinc-800" x-text="Math.min(page * perPage, filteredAssets.length)"></span> de <span class="font-semibold text-zinc-800" x-text="filteredAssets.length"></span> activos</span>
+                    <span x-show="filteredAssets.length !== assets.length" class="text-zinc-400 font-mono text-[11px]">
+                        (filtrados de <span x-text="assets.length"></span> totales)
+                    </span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-[11px] text-zinc-400">Por página:</span>
+                        <select x-model.number="perPage" @change="page = 1"
+                                class="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 cursor-pointer">
+                            <option :value="25">25</option>
+                            <option :value="50">50</option>
+                            <option :value="100">100</option>
+                            <option :value="250">250</option>
+                            <option :value="10000">Todos</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                        <button type="button" @click="page--" :disabled="page <= 1"
+                                :class="page <= 1 ? 'opacity-40 cursor-not-allowed text-zinc-300' : 'text-zinc-700 hover:bg-zinc-200 cursor-pointer'"
+                                class="p-1.5 rounded-lg border border-zinc-200 bg-white transition-colors" title="Página anterior">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        </button>
+                        <span class="px-2 font-mono text-[11px]">
+                            Pág. <span class="font-semibold text-zinc-800" x-text="page"></span> de <span class="font-semibold text-zinc-800" x-text="totalPages || 1"></span>
+                        </span>
+                        <button type="button" @click="page++" :disabled="page >= totalPages"
+                                :class="page >= totalPages ? 'opacity-40 cursor-not-allowed text-zinc-300' : 'text-zinc-700 hover:bg-zinc-200 cursor-pointer'"
+                                class="p-1.5 rounded-lg border border-zinc-200 bg-white transition-colors" title="Página siguiente">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
