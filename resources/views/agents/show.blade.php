@@ -605,7 +605,7 @@
                 <x-slot:toolbar>
                     <div>
                         <h3 class="text-sm font-semibold text-slate-900">Últimas sincronizaciones</h3>
-                        <p class="text-xs text-slate-500 mt-0.5">{{ $agentDevice->syncs->count() }} total · mostrando 5</p>
+                        <p class="text-xs text-slate-500 mt-0.5">{{ $totalSyncsCount ?? $agentDevice->syncs()->count() }} total · mostrando 5</p>
                     </div>
                 </x-slot:toolbar>
 
@@ -617,7 +617,7 @@
                     <x-ui.th>Fecha</x-ui.th>
                 </x-slot:head>
 
-                @forelse ($agentDevice->syncs->take(5) as $sync)
+                @forelse (($recentSyncs ?? $agentDevice->syncs()->latest('synced_at')->take(5)->get()) as $sync)
                 @php
                     $syncStatus  = $sync->status?->value ?? (string) $sync->status;
                     $syncType    = $sync->sync_type?->value ?? (string) $sync->sync_type;

@@ -197,7 +197,7 @@ class AgentDeviceController extends Controller
     {
         $this->authorize('agent.view');
 
-        $agentDevice->load('asset', 'syncs');
+        $agentDevice->load('asset');
 
         $heartbeats = $agentDevice->syncs()
             ->where('sync_type', AgentSyncType::HEARTBEAT->value)
@@ -212,6 +212,13 @@ class AgentDeviceController extends Controller
             ->values()
             ->all();
 
-        return view('agents.show', compact('agentDevice', 'heartbeats'));
+        $recentSyncs = $agentDevice->syncs()
+            ->latest('synced_at')
+            ->take(5)
+            ->get();
+
+        $totalSyncsCount = $agentDevice->syncs()->count();
+
+        return view('agents.show', compact('agentDevice', 'heartbeats', 'recentSyncs', 'totalSyncsCount'));
     }
 }
