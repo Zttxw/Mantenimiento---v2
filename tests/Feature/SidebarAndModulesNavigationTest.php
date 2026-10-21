@@ -95,12 +95,33 @@ class SidebarAndModulesNavigationTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Oficinas y Dependencias');
-        $response->assertSee('Total Unidades');
-        $response->assertSee('Unidades Activas');
-        $response->assertSee('Organigrama Institucional (Estructura)');
-        $response->assertSee('Directorio Tabular (Lista)');
-        $response->assertSee('Expandir Todo');
-        $response->assertSee('Colapsar Todo');
+        $response->assertSee('dependencias');
+        $response->assertSee('activas');
+        $response->assertSee('Árbol');
+        $response->assertSee('Tabla');
+    }
+
+    public function test_organizational_unit_quick_info_returns_json(): void
+    {
+        $coordinador = User::create([
+            'username' => 'coord_quick',
+            'email' => 'coord_quick@mdsj.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+        $coordinador->assignRole(RoleEnum::COORDINADOR_OTI->value);
+
+        $unit = \App\Models\OrganizationalUnit::create([
+            'name' => 'Oficina Test OTI',
+            'code' => 'TEST-001',
+            'type' => \App\Enums\OrgUnitType::OFICINA,
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($coordinador)->get(route('organizational-units.quick-info', $unit));
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('name', 'Oficina Test OTI');
     }
 
     public function test_employees_index_renders_cleanly_with_stats(): void

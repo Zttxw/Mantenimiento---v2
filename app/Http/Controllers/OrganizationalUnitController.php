@@ -61,6 +61,70 @@ class OrganizationalUnitController extends Controller
         return view('organizational-units.show', compact('organizationalUnit'));
     }
 
+    public function quickInfo(OrganizationalUnit $organizationalUnit)
+    {
+        $this->authorize('org-unit.view');
+
+        $organizationalUnit->load([
+            'parent:id,name',
+            'children:id,name,code,type,is_active',
+            'responsible:id,full_name,position,dni,email',
+            'empoyees:id,full_name,position,dni,email,organizational_unit_id,is_technician',
+            'assets:id,name,internal_code,asset_type,brand,model,status,organizational_unit_id,responsible_employee_id',
+            'assets.responsibleEmployee:id,full_name',
+        ]);
+
+        return response()->json([
+            'id' => $organizationalUnit->id,
+            'name' => $organizationalUnit->name,
+            'code' => $organizationalUnit->code,
+            'type' => $organizationalUnit->type->value,
+            'type_label' => $organizationalUnit->type->label(),
+            'full_path' => $organizationalUnit->full_path,
+            'is_active' => (bool) $organizationalUnit->is_active,
+            'parent' => $organizationalUnit->parent ? [
+                'id' => $organizationalUnit->parent->id,
+                'name' => $organizationalUnit->parent->name,
+            ] : null,
+            'responsible' => $organizationalUnit->responsible ? [
+                'id' => $organizationalUnit->responsible->id,
+                'name' => $organizationalUnit->responsible->full_name,
+                'position' => $organizationalUnit->responsible->position,
+                'dni' => $organizationalUnit->responsible->dni,
+                'email' => $organizationalUnit->responsible->email,
+            ] : null,
+            'children' => $organizationalUnit->children->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'code' => $c->code,
+                'type_label' => $c->type->label(),
+                'is_active' => (bool) $c->is_active,
+            ])->values(),
+            'employees' => $organizationalUnit->empoyees->map(fn ($e) => [
+                'id' => $e->id,
+                'name' => $e->full_name,
+                'position' => $e->position,
+                'dni' => $e->dni,
+                'email' => $e->email,
+                'is_technician' => (bool) $e->is_technician,
+                'show_url' => route('employees.show', $e),
+            ])->values(),
+            'assets' => $organizationalUnit->assets->map(fn ($a) => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'internal_code' => $a->internal_code,
+                'type_label' => $a->asset_type?->label() ?? 'Equipo',
+                'brand' => $a->brand,
+                'model' => $a->model,
+                'status_label' => $a->status?->label() ?? 'Operativo',
+                'responsible_name' => $a->responsibleEmployee?->full_name,
+                'show_url' => route('assets.show', $a),
+            ])->values(),
+            'show_url' => route('organizational-units.show', $organizationalUnit),
+            'edit_url' => route('organizational-units.edit', $organizationalUnit),
+        ]);
+    }
+
     public function edit(OrganizationalUnit $organizationalUnit)
     {
         $this->authorize('org-unit.edit');

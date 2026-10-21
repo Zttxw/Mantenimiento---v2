@@ -55,6 +55,7 @@ Route::middleware(['auth', 'user.active'])->group(function () {
 
     // ── Unidades organizacionales ─────────────────────────────────────────────
     Route::middleware('permission:org-unit.view')->group(function () {
+        Route::get('organizational-units/{organizationalUnit}/quick-info', [OrganizationalUnitController::class, 'quickInfo'])->name('organizational-units.quick-info');
         Route::resource('organizational-units', OrganizationalUnitController::class);
     });
 
