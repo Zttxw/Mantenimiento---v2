@@ -46,6 +46,11 @@ class OrganizationalUnit extends Model
         return $this->hasMany(Employee::class, 'organizational_unit_id');
     }
 
+    public function employees(): HasMany
+    {
+        return $this->empoyees();
+    }
+
     public function assets(): HasMany
     {
         return $this->hasMany(Asset::class, 'organizational_unit_id');

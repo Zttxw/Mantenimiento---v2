@@ -21,7 +21,14 @@ class OrganizationalUnitController extends Controller
 
         $units = $this->service->getPaginated(request()->only(['search', 'type', 'status']));
 
-        return view('organizational-units.index', compact('units'));
+        $stats = [
+            'total' => OrganizationalUnit::count(),
+            'active' => OrganizationalUnit::where('is_active', true)->count(),
+            'with_responsible' => OrganizationalUnit::whereNotNull('responsible_employee_id')->count(),
+            'with_assets' => OrganizationalUnit::has('assets')->count(),
+        ];
+
+        return view('organizational-units.index', compact('units', 'stats'));
     }
 
     public function create()

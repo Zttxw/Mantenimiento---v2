@@ -36,6 +36,9 @@ class SidebarAndModulesNavigationTest extends TestCase
         $response->assertSee('Soporte y Tickets');
         $response->assertSee('Campañas');
         $response->assertSee('Inventario');
+        $response->assertSee('Organización');
+        $response->assertSee('Oficinas y Áreas');
+        $response->assertSee('Personal y Responsables');
         $response->assertSee('Reportes');
         $response->assertSee('Configuración');
     }
@@ -56,6 +59,8 @@ class SidebarAndModulesNavigationTest extends TestCase
         $response->assertSee('Soporte y Tickets');
         $response->assertSee('Campañas');
         $response->assertSee('Inventario');
+        $response->assertSee('Oficinas y Áreas');
+        $response->assertSee('Personal y Responsables');
     }
 
     public function test_sidebar_renders_for_auxiliar(): void
@@ -73,5 +78,42 @@ class SidebarAndModulesNavigationTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Soporte y Tickets');
         $response->assertSee('Inventario');
+        $response->assertSee('Personal y Responsables');
+    }
+
+    public function test_organizational_units_index_renders_cleanly_with_stats(): void
+    {
+        $coordinador = User::create([
+            'username' => 'coord_org',
+            'email' => 'coord_org@mdsj.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+        $coordinador->assignRole(RoleEnum::COORDINADOR_OTI->value);
+
+        $response = $this->actingAs($coordinador)->get(route('organizational-units.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee('Oficinas y Dependencias');
+        $response->assertSee('Total Unidades');
+        $response->assertSee('Unidades Activas');
+    }
+
+    public function test_employees_index_renders_cleanly_with_stats(): void
+    {
+        $coordinador = User::create([
+            'username' => 'coord_emp',
+            'email' => 'coord_emp@mdsj.local',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+        $coordinador->assignRole(RoleEnum::COORDINADOR_OTI->value);
+
+        $response = $this->actingAs($coordinador)->get(route('employees.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee('Personal y Responsables');
+        $response->assertSee('Total Personal');
+        $response->assertSee('Custodios de Bienes');
     }
 }

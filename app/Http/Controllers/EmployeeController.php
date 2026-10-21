@@ -26,7 +26,14 @@ class EmployeeController extends Controller
 
         $units = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
 
-        return view('employees.index', compact('employees', 'units'));
+        $stats = [
+            'total' => Employee::count(),
+            'active' => Employee::where('is_active', true)->count(),
+            'technicians' => Employee::where('is_technician', true)->where('is_active', true)->count(),
+            'with_assets' => Employee::has('assignedAssets')->count(),
+        ];
+
+        return view('employees.index', compact('employees', 'units', 'stats'));
     }
 
     public function create()

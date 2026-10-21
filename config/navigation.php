@@ -65,6 +65,8 @@ return [
         ['label' => 'Nuevo activo', 'desc' => 'Registrar equipo informático', 'icon' => 'cube', 'route' => 'assets.create'],
         ['label' => 'Nueva campaña', 'desc' => 'Crear campaña preventiva', 'icon' => 'wrench', 'route' => 'campaigns.create'],
         ['label' => 'Buscar en inventario', 'desc' => 'Consultar activos y PCs', 'icon' => 'cube', 'route' => 'assets.index'],
+        ['label' => 'Oficinas y dependencias', 'desc' => 'Directorio de unidades institucionales', 'icon' => 'cube', 'route' => 'organizational-units.index'],
+        ['label' => 'Personal y responsables', 'desc' => 'Directorio de trabajadores y custodios', 'icon' => 'clipboard', 'route' => 'employees.index'],
         ['label' => 'Ver actas e informes', 'desc' => 'Centro de documentos oficiales', 'icon' => 'document', 'route' => 'documents.index'],
     ],
 ];

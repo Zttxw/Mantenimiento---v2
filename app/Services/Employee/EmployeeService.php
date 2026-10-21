@@ -17,15 +17,13 @@ class EmployeeService
     public function getPaginated(array $filters = []): LengthAwarePaginator
     {
         return Employee::with('organizationalUnit')
+            ->withCount('assignedAssets')
             ->search($filters['search'] ?? null)
-            ->when(isset($filters['is_technician']), fn ($q) => $q->where('is_technician', (bool) $filters['is_technician'])
-            )
-            ->when(isset($filters['unit_id']), fn ($q) => $q->where('organizational_unit_id', $filters['unit_id'])
-            )
-            ->when(isset($filters['status']), fn ($q) => $filters['status'] === 'active' ? $q->active() : $q->where('is_active', false)
-            )
-            ->latest()
-            ->paginate(15)
+            ->when(isset($filters['is_technician']) && $filters['is_technician'] !== '', fn ($q) => $q->where('is_technician', (bool) $filters['is_technician']))
+            ->when(!empty($filters['unit_id']), fn ($q) => $q->where('organizational_unit_id', $filters['unit_id']))
+            ->when(isset($filters['status']) && $filters['status'] !== '', fn ($q) => $filters['status'] === 'active' ? $q->active() : $q->where('is_active', false))
+            ->orderBy('full_name')
+            ->paginate(20)
             ->withQueryString();
     }
 

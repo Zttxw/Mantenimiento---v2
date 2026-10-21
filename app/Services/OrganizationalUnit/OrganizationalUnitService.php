@@ -21,16 +21,19 @@ class OrganizationalUnitService
 
     public function getPaginated(array $filters = []): LengthAwarePaginator
     {
-        return OrganizationalUnit::with('parent', 'responsible')
-            ->when($filters['search'] ?? null, fn ($q, $s) => $q->where('name', 'like', "%{$s}%")
-                ->orWhere('code', 'like', "%{$s}%")
-            )
-            ->when($filters['type'] ?? null, fn ($q, $t) => $q->where('type', $t)
-            )
-            ->when(isset($filters['status']), fn ($q) => $q->where('is_active', $filters['status'] === 'active')
-            )
+        return OrganizationalUnit::with(['parent', 'responsible'])
+            ->withCount(['empoyees as employees_count', 'assets as assets_count'])
+            ->when($filters['search'] ?? null, function ($q, $s) {
+                $q->where(function ($sub) use ($s) {
+                    $sub->where('name', 'like', "%{$s}%")
+                        ->orWhere('code', 'like', "%{$s}%");
+                });
+            })
+            ->when(!empty($filters['type']), fn ($q) => $q->where('type', $filters['type']))
+            ->when(isset($filters['status']) && $filters['status'] !== '', fn ($q) => $q->where('is_active', $filters['status'] === 'active'))
             ->orderBy('sort_order')
-            ->paginate(15)
+            ->orderBy('name')
+            ->paginate(20)
             ->withQueryString();
     }
 
