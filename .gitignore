@@ -25,3 +25,4 @@ Thumbs.db
 *.sql
 /Bd/
 Bd/*.sql
+scratch_*.php

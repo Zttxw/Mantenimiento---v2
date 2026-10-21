@@ -15,13 +15,15 @@ class PruneAgentSyncsCommand extends Command
                             {--snapshot-days= : Dias de retencion para snapshots (default desde settings o 90)}
                             {--compact-snapshots : Compactar snapshots conservando solo el primero de cada tramo estructuralmente identico}
                             {--batch-size=10000 : Tamano del lote para eliminacion}
+                            {--sleep-ms=50 : Pausa en milisegundos entre lotes para evitar bloqueos y contencion I/O}
+                            {--include-alerts : Eliminar tambien heartbeats con advertencias o incidentes de salud (por defecto se preservan)}
                             {--database= : Base de datos objetivo (por defecto la configurada)}
                             {--optimize : Ejecutar OPTIMIZE TABLE tras la depuracion (solo MySQL/MariaDB)}
                             {--dry-run : Simular eliminacion sin borrar registros}';
 
     protected $aliases = ['agent-syncs:prune'];
 
-    protected $description = 'Elimina heartbeats y snapshots antiguos de agent_syncs en lotes configurables, preservando siempre el ultimo snapshot por dispositivo';
+    protected $description = 'Elimina heartbeats rutinarios y snapshots antiguos de agent_syncs en lotes configurables, preservando alertas criticas y el ultimo snapshot por dispositivo';
 
     public function __construct(
         private readonly AgentDeviceService $agentDeviceService,
@@ -45,7 +47,9 @@ class PruneAgentSyncsCommand extends Command
         $heartbeatDays = (int) ($this->option('heartbeat-days') ?? Setting::get('agents.heartbeat_retention_days', 7));
         $snapshotDays = (int) ($this->option('snapshot-days') ?? Setting::get('agents.snapshot_retention_days', 90));
         $compactSnapshots = (bool) $this->option('compact-snapshots');
+        $includeAlerts = (bool) $this->option('include-alerts');
         $batchSize = max(100, (int) $this->option('batch-size'));
+        $sleepMs = max(0, (int) $this->option('sleep-ms'));
         $dryRun = (bool) $this->option('dry-run');
 
         $heartbeatCutoff = now()->subDays($heartbeatDays);
@@ -53,17 +57,21 @@ class PruneAgentSyncsCommand extends Command
 
         $this->info("Retencion Heartbeats: {$heartbeatDays} dias (anteriores a {$heartbeatCutoff->toDateTimeString()})");
         $this->info("Retencion Snapshots: {$snapshotDays} dias (anteriores a {$snapshotCutoff->toDateTimeString()})");
-        $this->info("Compactar Snapshots identicos: " . ($compactSnapshots ? '<fg=green>SI</>' : '<fg=yellow>NO</>'));
-        $this->info("Tamano de lote: {$batchSize}");
+        $this->info('Preservar incidentes/alertas de salud: '.(! $includeAlerts ? '<fg=green>SI</>' : '<fg=red>NO (se eliminaran)</>'));
+        $this->info('Compactar Snapshots identicos: '.($compactSnapshots ? '<fg=green>SI</>' : '<fg=yellow>NO</>'));
+        $this->info("Tamano de lote: {$batchSize}".($sleepMs > 0 ? " (pausa {$sleepMs}ms entre lotes)" : ''));
 
         $statsBefore = $this->getTableStats($currentDb);
         $this->line("Tamano inicial agent_syncs: <fg=yellow>{$statsBefore['size_mb']} MB</> ({$statsBefore['rows']} filas aprox)");
 
-        // 1. Conteo de Heartbeats candidatos
-        $pendingHeartbeats = DB::table('agent_syncs')
+        // 1. Conteo de Heartbeats candidatos respetando filtro de alertas
+        $heartbeatBaseQuery = DB::table('agent_syncs')
             ->where('sync_type', AgentSyncType::HEARTBEAT->value)
-            ->where('created_at', '<', $heartbeatCutoff)
-            ->count();
+            ->where('created_at', '<', $heartbeatCutoff);
+
+        $totalOldHeartbeats = (clone $heartbeatBaseQuery)->count();
+        $pendingHeartbeats = $this->applyRoutineHeartbeatFilter(clone $heartbeatBaseQuery, $includeAlerts)->count();
+        $protectedAlerts = $totalOldHeartbeats - $pendingHeartbeats;
 
         // 2. Conteo de Snapshots candidatos PROTEGIENDO el último de cada dispositivo
         $latestSnapshotIds = DB::table('agent_syncs')
@@ -87,44 +95,50 @@ class PruneAgentSyncsCommand extends Command
         $retentionSnapshotIdsToExclude = $snapshotQuery->pluck('id')->all();
         $retentionExcludedLookup = array_flip($retentionSnapshotIdsToExclude);
 
-        $this->info("Heartbeats a purgar por retencion: <fg=yellow>{$pendingHeartbeats}</>");
-        $this->info("Snapshots a purgar por retencion (> {$snapshotDays}d): <fg=yellow>{$pendingSnapshots}</> (protegiendo " . count($latestSnapshotIds) . " ultimos snapshots)");
+        $this->info("Heartbeats rutinarios a purgar: <fg=yellow>{$pendingHeartbeats}</>".($protectedAlerts > 0 ? " (protegiendo <fg=green>{$protectedAlerts}</> con incidentes/alertas)" : ''));
+        $this->info("Snapshots a purgar por retencion (> {$snapshotDays}d): <fg=yellow>{$pendingSnapshots}</> (protegiendo ".count($latestSnapshotIds).' ultimos snapshots)');
 
         // 3. Conteo de Snapshots a compactar si se solicita
         $duplicateSnapshotIds = [];
         if ($compactSnapshots) {
             $duplicateSnapshotIds = $this->findDuplicateSnapshots($latestLookup, $retentionExcludedLookup);
-            $this->info("Snapshots duplicados en tramos identicos a compactar: <fg=yellow>" . count($duplicateSnapshotIds) . "</>");
+            $this->info('Snapshots duplicados en tramos identicos a compactar: <fg=yellow>'.count($duplicateSnapshotIds).'</>');
         }
 
         if ($dryRun) {
             $totalDryDeleted = $pendingHeartbeats + $pendingSnapshots + count($duplicateSnapshotIds);
             $this->warn("Modo DRY-RUN activo: no se realizo ningun borrado. Total filas candidatas: {$totalDryDeleted}");
+
             return self::SUCCESS;
         }
 
         $totalHeartbeatsDeleted = 0;
         $totalSnapshotsDeleted = 0;
 
-        // Purgar heartbeats en lotes
-        $this->output->write("Purgando heartbeats... ");
+        // Purgar heartbeats rutinarios en lotes protegidos con micro-pausas
+        $this->output->write('Purgando heartbeats... ');
         do {
-            $ids = DB::table('agent_syncs')
+            $hbQuery = DB::table('agent_syncs')
                 ->where('sync_type', AgentSyncType::HEARTBEAT->value)
-                ->where('created_at', '<', $heartbeatCutoff)
-                ->limit($batchSize)
-                ->pluck('id');
+                ->where('created_at', '<', $heartbeatCutoff);
+
+            $hbQuery = $this->applyRoutineHeartbeatFilter($hbQuery, $includeAlerts);
+
+            $ids = $hbQuery->limit($batchSize)->pluck('id');
 
             if ($ids->isNotEmpty()) {
                 $deleted = DB::table('agent_syncs')->whereIn('id', $ids)->delete();
                 $totalHeartbeatsDeleted += $deleted;
-                $this->output->write(".");
+                $this->output->write('.');
+                if ($sleepMs > 0) {
+                    usleep($sleepMs * 1000);
+                }
             }
         } while ($ids->isNotEmpty());
         $this->output->writeln(" <fg=green>Listo ({$totalHeartbeatsDeleted} eliminados)</>");
 
         // Purgar snapshots en lotes respetando la protección del último snapshot
-        $this->output->write("Purgando snapshots... ");
+        $this->output->write('Purgando snapshots... ');
         do {
             $snapQuery = DB::table('agent_syncs')
                 ->where('sync_type', AgentSyncType::SNAPSHOT->value)
@@ -139,7 +153,10 @@ class PruneAgentSyncsCommand extends Command
             if ($ids->isNotEmpty()) {
                 $deleted = DB::table('agent_syncs')->whereIn('id', $ids)->delete();
                 $totalSnapshotsDeleted += $deleted;
-                $this->output->write(".");
+                $this->output->write('.');
+                if ($sleepMs > 0) {
+                    usleep($sleepMs * 1000);
+                }
             }
         } while ($ids->isNotEmpty());
         $this->output->writeln(" <fg=green>Listo ({$totalSnapshotsDeleted} eliminados)</>");
@@ -147,12 +164,15 @@ class PruneAgentSyncsCommand extends Command
         // Compactar snapshots duplicados en lotes si fue solicitado
         $totalCompactedDeleted = 0;
         if ($compactSnapshots && ! empty($duplicateSnapshotIds)) {
-            $this->output->write("Compactando snapshots duplicados... ");
+            $this->output->write('Compactando snapshots duplicados... ');
             $chunks = array_chunk($duplicateSnapshotIds, $batchSize);
             foreach ($chunks as $chunk) {
                 $deleted = DB::table('agent_syncs')->whereIn('id', $chunk)->delete();
                 $totalCompactedDeleted += $deleted;
-                $this->output->write(".");
+                $this->output->write('.');
+                if ($sleepMs > 0) {
+                    usleep($sleepMs * 1000);
+                }
             }
             $this->output->writeln(" <fg=green>Listo ({$totalCompactedDeleted} eliminados)</>");
         }
@@ -161,9 +181,9 @@ class PruneAgentSyncsCommand extends Command
         if ($this->option('optimize')) {
             $driver = DB::connection()->getDriverName();
             if (in_array($driver, ['mysql', 'mariadb'])) {
-                $this->info("Ejecutando OPTIMIZE TABLE agent_syncs para reclamar espacio en disco...");
+                $this->info('Ejecutando OPTIMIZE TABLE agent_syncs para reclamar espacio en disco...');
                 DB::statement('OPTIMIZE TABLE agent_syncs');
-                $this->info("Tabla optimizada.");
+                $this->info('Tabla optimizada.');
             } else {
                 $this->line("Omitiendo OPTIMIZE TABLE (driver actual: '{$driver}' no es MySQL/MariaDB).");
             }
@@ -182,7 +202,7 @@ class PruneAgentSyncsCommand extends Command
 
     private function findDuplicateSnapshots(array $latestLookup, array $retentionExcludedLookup): array
     {
-        $this->output->write("Analizando snapshots de dispositivos para compactar... ");
+        $this->output->write('Analizando snapshots de dispositivos para compactar... ');
 
         $deviceIds = DB::table('agent_syncs')
             ->where('sync_type', AgentSyncType::SNAPSHOT->value)
@@ -213,6 +233,7 @@ class PruneAgentSyncsCommand extends Command
 
                 if (! is_array($payload)) {
                     $currentStreakHash = null;
+
                     continue;
                 }
 
@@ -235,9 +256,29 @@ class PruneAgentSyncsCommand extends Command
             }
         }
 
-        $this->output->writeln(" <fg=green>Listo</>");
+        $this->output->writeln(' <fg=green>Listo</>');
 
         return $duplicateSnapshotIds;
+    }
+
+    private function applyRoutineHeartbeatFilter($query, bool $includeAlerts = false)
+    {
+        if ($includeAlerts) {
+            return $query;
+        }
+
+        return $query->where(function ($sub) {
+            $sub->where(function ($q) {
+                $q->whereNull('payload_json->health')
+                    ->where('payload_json->status', 'ok');
+            })->orWhere(function ($q) {
+                $q->where('payload_json->health->overallStatus', 'ok')
+                    ->where(function ($w) {
+                        $w->whereNull('payload_json->health->warnings')
+                            ->orWhereJsonLength('payload_json->health->warnings', 0);
+                    });
+            });
+        });
     }
 
     private function getTableStats(string $dbName): array
@@ -245,6 +286,7 @@ class PruneAgentSyncsCommand extends Command
         $driver = DB::connection()->getDriverName();
         if (! in_array($driver, ['mysql', 'mariadb'])) {
             $count = DB::table('agent_syncs')->count();
+
             return ['size_mb' => 0.0, 'rows' => $count];
         }
 
@@ -258,7 +300,7 @@ class PruneAgentSyncsCommand extends Command
 
         return [
             'size_mb' => $result ? (float) $result->size_mb : 0.0,
-            'rows'    => $result ? (int) $result->rows_count : 0,
+            'rows' => $result ? (int) $result->rows_count : 0,
         ];
     }
 }

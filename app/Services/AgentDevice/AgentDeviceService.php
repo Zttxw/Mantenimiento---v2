@@ -6,12 +6,14 @@ use App\DTOs\AgentDevice\HeartbeatDTO;
 use App\DTOs\AgentDevice\RegisterAgentDTO;
 use App\DTOs\AgentSync\CreateAgentSyncDTO;
 use App\Enums\AgentDeviceStatus;
+use App\Enums\AgentSyncStatus;
 use App\Enums\AgentSyncType;
 use App\Enums\AssetCondition;
 use App\Enums\AssetStatus;
 use App\Enums\AssetType;
 use App\Exceptions\AgentDevice\AgentDeviceException;
 use App\Models\AgentDevice;
+use App\Models\AgentSync;
 use App\Models\Asset;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
@@ -35,10 +37,10 @@ class AgentDeviceService
 
         $plainToken = Str::random(60);
         $payload = array_merge($dto->toArray(), [
-            'asset_id'            => $asset?->id,
-            'status'             => AgentDeviceStatus::ACTIVO->value,
-            'last_heartbeat_at'  => now(),
-            'api_token'           => hash('sha256', $plainToken),
+            'asset_id' => $asset?->id,
+            'status' => AgentDeviceStatus::ACTIVO->value,
+            'last_heartbeat_at' => now(),
+            'api_token' => hash('sha256', $plainToken),
         ]);
 
         $device = AgentDevice::create($payload);
@@ -50,12 +52,12 @@ class AgentDeviceService
     public function heartbeat(AgentDevice $device, HeartbeatDTO $dto): AgentDevice
     {
         $device->update([
-            'agent_version'      => $dto->agent_version,
-            'last_ip'            => $dto->last_ip,
-            'last_heartbeat_at'  => now(),
-            'status'             => AgentDeviceStatus::ACTIVO->value,
+            'agent_version' => $dto->agent_version,
+            'last_ip' => $dto->last_ip,
+            'last_heartbeat_at' => now(),
+            'status' => AgentDeviceStatus::ACTIVO->value,
             'last_snapshot_json' => $dto->last_snapshot_json ?? $device->last_snapshot_json,
-            'last_health_json'   => $dto->health ?? $device->last_health_json,
+            'last_health_json' => $dto->health ?? $device->last_health_json,
         ]);
 
         if ($device->asset && $dto->health) {
@@ -72,26 +74,40 @@ class AgentDeviceService
             );
         }
 
-        $device->syncs()->create([
-            'sync_type'  => AgentSyncType::HEARTBEAT->value,
-            'payload_json' => [
-                'sent_at_utc' => $dto->sent_at_utc,
-                'agent_version' => $dto->agent_version,
-                'status' => $dto->status,
-                'last_ip' => $dto->last_ip,
-                'health' => $dto->health,
-                'asset_code' => $dto->asset_code,
-                'organizational_unit_id' => $dto->organizational_unit_id,
-                'responsible_employee_id' => $dto->responsible_employee_id,
-            ],
-            'status'     => \App\Enums\AgentSyncStatus::PROCESADO->value,
-            'synced_at'  => now(),
-        ]);
+        $health = $dto->health;
+        $hasHealthAlert = false;
+        if (is_array($health)) {
+            $overall = strtolower($health['overallStatus'] ?? 'ok');
+            $warnings = $health['warnings'] ?? [];
+            if ($overall !== 'ok' || ! empty($warnings)) {
+                $hasHealthAlert = true;
+            }
+        }
+
+        // Persistir en histórico solo si hay incidentes o advertencias de salud relevantes
+        // o si el status general no es 'ok'. Los latidos rutinarios solo actualizan agent_devices.
+        if ($hasHealthAlert || strtolower($dto->status ?? 'ok') !== 'ok') {
+            $device->syncs()->create([
+                'sync_type' => AgentSyncType::HEARTBEAT->value,
+                'payload_json' => [
+                    'sent_at_utc' => $dto->sent_at_utc,
+                    'agent_version' => $dto->agent_version,
+                    'status' => $dto->status,
+                    'last_ip' => $dto->last_ip,
+                    'health' => $dto->health,
+                    'asset_code' => $dto->asset_code,
+                    'organizational_unit_id' => $dto->organizational_unit_id,
+                    'responsible_employee_id' => $dto->responsible_employee_id,
+                ],
+                'status' => AgentSyncStatus::PROCESADO->value,
+                'synced_at' => now(),
+            ]);
+        }
 
         return $device->fresh();
     }
 
-    public function receiveSync(AgentDevice $device, CreateAgentSyncDTO $dto): ?\App\Models\AgentSync
+    public function receiveSync(AgentDevice $device, CreateAgentSyncDTO $dto): ?AgentSync
     {
         if ($dto->sync_type === AgentSyncType::SNAPSHOT && $dto->payload_json) {
             $newPayload = $dto->payload_json;
@@ -121,18 +137,18 @@ class AgentDeviceService
             $delta = $this->calculateSnapshotDelta($previousPayload ?? [], $newPayload);
 
             $sync = $device->syncs()->create([
-                'sync_type'             => AgentSyncType::SNAPSHOT->value,
-                'payload_json'          => $newPayload,
+                'sync_type' => AgentSyncType::SNAPSHOT->value,
+                'payload_json' => $newPayload,
                 'detected_changes_json' => $delta,
-                'status'                => \App\Enums\AgentSyncStatus::PROCESADO->value,
-                'synced_at'             => now(),
+                'status' => AgentSyncStatus::PROCESADO->value,
+                'synced_at' => now(),
             ]);
 
             return $sync->fresh();
         }
 
         $sync = $device->syncs()->create($dto->toArray());
-        $sync->update(['status' => \App\Enums\AgentSyncStatus::PROCESADO->value]);
+        $sync->update(['status' => AgentSyncStatus::PROCESADO->value]);
 
         return $sync->fresh();
     }
@@ -194,6 +210,7 @@ class AgentDeviceService
             usort($software, function ($a, $b) {
                 $nameA = strtolower($a['name'] ?? $a['normalizedName'] ?? '');
                 $nameB = strtolower($b['name'] ?? $b['normalizedName'] ?? '');
+
                 return strcmp($nameA, $nameB);
             });
             $payload['installedSoftware'] = array_values($software);
@@ -225,21 +242,21 @@ class AgentDeviceService
                 : 0;
 
             return [
-                'type'             => 'initial_registration',
-                'detected_at'      => now()->toIso8601String(),
-                'software_count'   => $softwareCount,
+                'type' => 'initial_registration',
+                'detected_at' => now()->toIso8601String(),
+                'software_count' => $softwareCount,
                 'operating_system' => data_get($newPayload, 'device.operatingSystem'),
-                'total_memory_gb'  => data_get($newPayload, 'device.totalMemoryGb'),
+                'total_memory_gb' => data_get($newPayload, 'device.totalMemoryGb'),
                 'total_storage_gb' => data_get($newPayload, 'device.totalStorageGb'),
             ];
         }
 
         $delta = [
-            'type'         => 'hardware_software_change',
-            'detected_at'  => now()->toIso8601String(),
-            'hardware'     => [],
-            'software'     => [
-                'added'   => [],
+            'type' => 'hardware_software_change',
+            'detected_at' => now()->toIso8601String(),
+            'hardware' => [],
+            'software' => [
+                'added' => [],
                 'removed' => [],
                 'updated' => [],
             ],
@@ -263,14 +280,14 @@ class AgentDeviceService
         foreach ($newSoftware as $name => $item) {
             if (! isset($oldSoftware[$name])) {
                 $delta['software']['added'][] = [
-                    'name'    => $item['name'],
+                    'name' => $item['name'],
                     'version' => $item['version'] ?? null,
                 ];
             } elseif (($oldSoftware[$name]['version'] ?? '') !== ($item['version'] ?? '')) {
                 $delta['software']['updated'][] = [
-                    'name'         => $item['name'],
+                    'name' => $item['name'],
                     'from_version' => $oldSoftware[$name]['version'] ?? null,
-                    'to_version'   => $item['version'] ?? null,
+                    'to_version' => $item['version'] ?? null,
                 ];
             }
         }
@@ -278,7 +295,7 @@ class AgentDeviceService
         foreach ($oldSoftware as $name => $item) {
             if (! isset($newSoftware[$name])) {
                 $delta['software']['removed'][] = [
-                    'name'    => $item['name'],
+                    'name' => $item['name'],
                     'version' => $item['version'] ?? null,
                 ];
             }
@@ -295,18 +312,24 @@ class AgentDeviceService
         }
 
         // Limpiar secciones vacías
-        if (empty($delta['hardware'])) unset($delta['hardware']);
+        if (empty($delta['hardware'])) {
+            unset($delta['hardware']);
+        }
         if (empty($delta['software']['added']) && empty($delta['software']['removed']) && empty($delta['software']['updated'])) {
             unset($delta['software']);
         }
-        if (empty($delta['administrative'])) unset($delta['administrative']);
+        if (empty($delta['administrative'])) {
+            unset($delta['administrative']);
+        }
 
         return $delta;
     }
 
     private function indexSoftware(mixed $list): array
     {
-        if (! is_array($list)) return [];
+        if (! is_array($list)) {
+            return [];
+        }
 
         $indexed = [];
         foreach ($list as $item) {
@@ -315,7 +338,7 @@ class AgentDeviceService
                 if ($name !== '') {
                     $key = strtolower($name);
                     $indexed[$key] = [
-                        'name'    => $name,
+                        'name' => $name,
                         'version' => $item['version'] ?? null,
                     ];
                 }

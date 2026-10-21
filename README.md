@@ -1,58 +1,67 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SIGAT - Sistema de Mantenimiento y Gestión de Activos TI
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema integral de gestión de activos de hardware, mantenimiento preventivo/correctivo y monitoreo mediante agentes de telemetría de la MDSJ.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 🚀 Despliegue y Operaciones en Producción
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Comando de Optimización y Depuración de Historial de Agentes
+Para depurar heartbeats rutinarios redundantes y compactar snapshots idénticos sin perder inventarios ni alertas de salud:
 
 ```bash
-composer require laravel/boost --dev
+# Simulación previa sin riesgo (Dry-Run):
+php artisan agents:purge-sync-history --dry-run --compact-snapshots
 
-php artisan boost:install
+# Ejecución real controlada en lotes de 10,000 registros con pausa de 50ms:
+php artisan agents:purge-sync-history --compact-snapshots --batch-size=10000 --sleep-ms=50
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+> 📖 **Guía Completa para Producción:** Consulta el manual operativo oficial en [docs/RUNBOOK_PRODUCCION.md](docs/RUNBOOK_PRODUCCION.md) para el protocolo de backup previo, monitoreo, mitigación de bloqueos y optimización física de almacenamiento.
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 🛠️ Stack Tecnológico
 
-## Code of Conduct
+- **Backend:** Laravel 11/13 + PHP 8.3
+- **Base de Datos:** MariaDB 10.11 / MySQL (Motor InnoDB)
+- **Frontend:** Blade + Tailwind CSS + Alpine.js + Vite
+- **Autenticación y Roles:** `spatie/laravel-permission`
+- **Monitoreo:** Endpoints REST API para Agentes Windows/Linux con deduplicación estructural SHA-256
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## 💻 Puesta en Marcha Local
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 1. Iniciar servicios en segundo plano:
+```powershell
+# Levantar servidor backend (Laravel):
+php artisan serve
 
-## License
+# Levantar servidor de desarrollo de vistas (Vite):
+npm run dev
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 2. Acceso al sistema:
+- **URL Local:** [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- **Usuario administrador:** `superadmin` *(o `superadmin@mdsj.local`)*
+- **Contraseña:** `MdsjAdmin2026!`
+
+---
+
+## 🧪 Pruebas Automatizadas
+
+Para correr la suite de pruebas unitarias y de integración de agentes:
+
+```bash
+php artisan test --filter=AgentSyncPruneAndDeduplicationTest
+```
+
+---
+
+## 📁 Documentación del Proyecto
+
+- [Runbook Oficial de Producción](docs/RUNBOOK_PRODUCCION.md): Procedimiento de backup, despliegue y limpieza.
+- [Bitácora de Sesión Técnica](docs/historial-sesiones/2026-10-21_optimizacion_base_datos_y_agentes.md): Auditoría de datos reales y registro de decisiones.
+- [Estado de Implementación](ESTADO_IMPLEMENTACION.md): Módulos y avance del sistema.
+- [Mapa del Sistema](MAPA_SISTEMA_IA.md): Arquitectura detallada de modelos y relaciones.

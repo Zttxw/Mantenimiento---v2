@@ -2,12 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\AgentDevice\HeartbeatDTO;
 use App\DTOs\AgentSync\CreateAgentSyncDTO;
 use App\Enums\AgentSyncType;
+use App\Enums\RoleEnum;
+use App\Enums\SettingType;
 use App\Models\AgentDevice;
 use App\Models\AgentSync;
 use App\Models\Setting;
+use App\Models\User;
 use App\Services\AgentDevice\AgentDeviceService;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -99,7 +104,7 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
         ]);
         DB::table('agent_syncs')->where('id', $d1Snap1->id)->update([
             'created_at' => now()->subDays(120),
-            'synced_at'  => now()->subDays(120),
+            'synced_at' => now()->subDays(120),
         ]);
 
         $d1Snap2 = AgentSync::create([ // Este es su último snapshot
@@ -111,7 +116,7 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
         ]);
         DB::table('agent_syncs')->where('id', $d1Snap2->id)->update([
             'created_at' => now()->subDays(100),
-            'synced_at'  => now()->subDays(100),
+            'synced_at' => now()->subDays(100),
         ]);
 
         // Device 2 solo tiene un snapshot antiguo (150 días atrás)
@@ -124,7 +129,7 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
         ]);
         DB::table('agent_syncs')->where('id', $d2SnapOnly->id)->update([
             'created_at' => now()->subDays(150),
-            'synced_at'  => now()->subDays(150),
+            'synced_at' => now()->subDays(150),
         ]);
 
         // Heartbeats antiguos (15 días atrás) y recientes (2 días atrás)
@@ -137,7 +142,7 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
         ]);
         DB::table('agent_syncs')->where('id', $oldHeartbeat->id)->update([
             'created_at' => now()->subDays(15),
-            'synced_at'  => now()->subDays(15),
+            'synced_at' => now()->subDays(15),
         ]);
 
         $recentHeartbeat = AgentSync::create([
@@ -149,7 +154,7 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
         ]);
         DB::table('agent_syncs')->where('id', $recentHeartbeat->id)->update([
             'created_at' => now()->subDays(2),
-            'synced_at'  => now()->subDays(2),
+            'synced_at' => now()->subDays(2),
         ]);
 
         // Ejecutar comando con retención 7 días heartbeats y 90 días snapshots
@@ -179,7 +184,7 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
         Setting::create([
             'key' => 'agents.heartbeat_retention_days',
             'value' => '5',
-            'type' => \App\Enums\SettingType::INTEGER,
+            'type' => SettingType::INTEGER,
             'group_name' => 'agents',
         ]);
 
@@ -194,7 +199,7 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
         ]);
         DB::table('agent_syncs')->where('id', $sync->id)->update([
             'created_at' => now()->subDays(6),
-            'synced_at'  => now()->subDays(6),
+            'synced_at' => now()->subDays(6),
         ]);
 
         // Con dry-run no se debe borrar nada
@@ -212,15 +217,15 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
 
     public function test_web_show_loads_and_renders_view_without_errors(): void
     {
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
-        $user = \App\Models\User::create([
+        $user = User::create([
             'username' => 'admin_test',
             'email' => 'admin@test.com',
             'password' => bcrypt('password'),
             'is_active' => true,
         ]);
-        $user->assignRole(\App\Enums\RoleEnum::ADMIN->value);
+        $user->assignRole(RoleEnum::ADMIN->value);
 
         $device = AgentDevice::create([
             'hostname' => 'PC-MONITOR-01',
@@ -331,6 +336,103 @@ class AgentSyncPruneAndDeduplicationTest extends TestCase
         $this->assertDatabaseHas('agent_syncs', ['id' => $s4->id]);
         $this->assertEquals(2, AgentSync::where('agent_device_id', $device->id)->count());
     }
+
+    public function test_routine_heartbeat_updates_device_without_creating_sync_history_row(): void
+    {
+        $device = AgentDevice::create(['hostname' => 'PC-01', 'status' => 'activo']);
+        $dto = HeartbeatDTO::fromArray([
+            'agent_version' => '1.0.0',
+            'status' => 'ok',
+            'sent_at_utc' => now()->toIso8601String(),
+            'last_ip' => '192.168.1.50',
+            'health' => [
+                'overallStatus' => 'ok',
+                'warnings' => [],
+            ],
+        ]);
+
+        $updated = $this->service->heartbeat($device, $dto);
+
+        $this->assertEquals('192.168.1.50', $updated->last_ip);
+        $this->assertNotNull($updated->last_heartbeat_at);
+        $this->assertEquals(0, AgentSync::where('agent_device_id', $device->id)->count());
+    }
+
+    public function test_heartbeat_with_health_alert_or_warning_creates_sync_history_row(): void
+    {
+        $device = AgentDevice::create(['hostname' => 'PC-02', 'status' => 'activo']);
+        $dto = HeartbeatDTO::fromArray([
+            'agent_version' => '1.0.0',
+            'status' => 'ok',
+            'sent_at_utc' => now()->toIso8601String(),
+            'last_ip' => '192.168.1.51',
+            'health' => [
+                'overallStatus' => 'critical',
+                'warnings' => ['critical: disco C:\ en estado critico.'],
+            ],
+        ]);
+
+        $updated = $this->service->heartbeat($device, $dto);
+
+        $this->assertEquals('192.168.1.51', $updated->last_ip);
+        $this->assertEquals(1, AgentSync::where('agent_device_id', $device->id)->count());
+        $sync = AgentSync::where('agent_device_id', $device->id)->first();
+        $this->assertEquals(AgentSyncType::HEARTBEAT, $sync->sync_type);
+        $this->assertEquals('critical', $sync->payload_json['health']['overallStatus']);
+    }
+
+    public function test_purge_eliminates_routine_heartbeats_but_preserves_alerts_and_valid_snapshots(): void
+    {
+        $device = AgentDevice::create(['hostname' => 'PC-03', 'status' => 'activo']);
+
+        // 1. Heartbeat viejo rutinario (debe purgarse)
+        $oldRoutineHb = AgentSync::create([
+            'agent_device_id' => $device->id,
+            'sync_type' => AgentSyncType::HEARTBEAT->value,
+            'payload_json' => [
+                'status' => 'ok',
+                'health' => ['overallStatus' => 'ok', 'warnings' => []],
+            ],
+            'status' => 'procesado',
+            'synced_at' => now()->subDays(20),
+        ]);
+        DB::table('agent_syncs')->where('id', $oldRoutineHb->id)->update(['created_at' => now()->subDays(20)]);
+
+        // 2. Heartbeat viejo con alerta crítica (DEBE PRESERVARSE)
+        $oldAlertHb = AgentSync::create([
+            'agent_device_id' => $device->id,
+            'sync_type' => AgentSyncType::HEARTBEAT->value,
+            'payload_json' => [
+                'status' => 'ok',
+                'health' => ['overallStatus' => 'critical', 'warnings' => ['disco lleno']],
+            ],
+            'status' => 'procesado',
+            'synced_at' => now()->subDays(20),
+        ]);
+        DB::table('agent_syncs')->where('id', $oldAlertHb->id)->update(['created_at' => now()->subDays(20)]);
+
+        // 3. Snapshot antiguo único/vigente (DEBE PRESERVARSE)
+        $oldLatestSnap = AgentSync::create([
+            'agent_device_id' => $device->id,
+            'sync_type' => AgentSyncType::SNAPSHOT->value,
+            'payload_json' => ['device' => ['hostname' => 'PC-03']],
+            'status' => 'procesado',
+            'synced_at' => now()->subDays(150),
+        ]);
+        DB::table('agent_syncs')->where('id', $oldLatestSnap->id)->update(['created_at' => now()->subDays(150)]);
+
+        // Ejecutar comando con retención 7 días de heartbeats
+        $this->artisan('agents:purge-sync-history', [
+            '--heartbeat-days' => 7,
+            '--snapshot-days' => 90,
+        ])->assertSuccessful();
+
+        // Verificaciones:
+        // El rutinario debe haber sido eliminado
+        $this->assertDatabaseMissing('agent_syncs', ['id' => $oldRoutineHb->id]);
+
+        // La alerta y el snapshot vigente DEBEN PRESERVARSE
+        $this->assertDatabaseHas('agent_syncs', ['id' => $oldAlertHb->id]);
+        $this->assertDatabaseHas('agent_syncs', ['id' => $oldLatestSnap->id]);
+    }
 }
-
-
