@@ -26,11 +26,11 @@ class MaintenanceCampaign extends Model
     ];
 
     protected $casts = [
-        'status'       => CampaignStatus::class,
-        'scope_json'   => 'array',
+        'status' => CampaignStatus::class,
+        'scope_json' => 'array',
         'metrics_json' => 'array',
-        'start_date'   => 'date',
-        'end_date'     => 'date',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
     public function coordinator(): BelongsTo
@@ -51,8 +51,8 @@ class MaintenanceCampaign extends Model
     public function assets(): BelongsToMany
     {
         return $this->belongsToMany(Asset::class, 'campaign_assets')
-                    ->withPivot('assigned_technician_id', 'scheduled_date', 'attended_date', 'status', 'maintenance_case_id', 'notes')
-                    ->withTimestamps();
+            ->withPivot('assigned_technician_id', 'scheduled_date', 'attended_date', 'status', 'maintenance_case_id', 'notes')
+            ->withTimestamps();
     }
 
     public function maintenanceCases(): HasMany
@@ -68,7 +68,7 @@ class MaintenanceCampaign extends Model
 
         return $query->where(function (Builder $q) use ($term) {
             $q->where('name', 'like', "%{$term}%")
-              ->orWhere('code', 'like', "%{$term}%");
+                ->orWhere('code', 'like', "%{$term}%");
         });
     }
 

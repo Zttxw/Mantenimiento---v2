@@ -24,8 +24,8 @@ class Document extends Model
 
     protected $casts = [
         'document_type' => DocumentType::class,
-        'generated_at'  => 'datetime',
-        'meta_json'     => 'array',
+        'generated_at' => 'datetime',
+        'meta_json' => 'array',
     ];
 
     public function reference(): MorphTo

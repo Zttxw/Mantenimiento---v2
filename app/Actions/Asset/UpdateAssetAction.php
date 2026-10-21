@@ -12,6 +12,7 @@ class UpdateAssetAction
     {
         return DB::transaction(function () use ($asset, $dto) {
             $asset->update($dto->toArray());
+
             return $asset->fresh();
         });
     }

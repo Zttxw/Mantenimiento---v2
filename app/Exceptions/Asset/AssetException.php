@@ -3,6 +3,7 @@
 namespace App\Exceptions\Asset;
 
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class AssetException extends Exception
@@ -41,7 +42,7 @@ class AssetException extends Exception
         );
     }
 
-    public function render(): \Illuminate\Http\JsonResponse
+    public function render(): JsonResponse
     {
         return response()->json([
             'message' => $this->getMessage(),

@@ -35,14 +35,14 @@ class MaintenanceCase extends Model
     ];
 
     protected $casts = [
-        'maintenance_type'     => MaintenanceType::class,
-        'priority'             => MaintenancePriority::class,
-        'status'               => MaintenanceCaseStatus::class,
-        'started_at'           => 'datetime',
-        'finished_at'          => 'datetime',
+        'maintenance_type' => MaintenanceType::class,
+        'priority' => MaintenancePriority::class,
+        'status' => MaintenanceCaseStatus::class,
+        'started_at' => 'datetime',
+        'finished_at' => 'datetime',
         'next_maintenance_date' => 'date',
-        'conformity_date'      => 'date',
-        'total_cost'           => 'decimal:2',
+        'conformity_date' => 'date',
+        'total_cost' => 'decimal:2',
     ];
 
     public function asset(): BelongsTo
@@ -78,7 +78,7 @@ class MaintenanceCase extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class, 'reference_id')
-                    ->where('reference_type', self::class);
+            ->where('reference_type', self::class);
     }
 
     // Scopes
@@ -91,9 +91,9 @@ class MaintenanceCase extends Model
 
         return $query->where(function (Builder $q) use ($term) {
             $q->where('code', 'like', "%{$term}%")
-              ->orWhere('problem_description', 'like', "%{$term}%")
-              ->orWhereHas('asset', fn ($a) => $a->where('name', 'like', "%{$term}%")
-                                                  ->orWhere('internal_code', 'like', "%{$term}%"));
+                ->orWhere('problem_description', 'like', "%{$term}%")
+                ->orWhereHas('asset', fn ($a) => $a->where('name', 'like', "%{$term}%")
+                    ->orWhere('internal_code', 'like', "%{$term}%"));
         });
     }
 

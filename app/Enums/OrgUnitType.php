@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Enums;
 
 enum OrgUnitType: string
@@ -76,8 +77,9 @@ enum OrgUnitType: string
 
     private static function stripAccents(string $value): string
     {
-        $from = ['Á','É','Í','Ó','Ú','Ü','Ñ','á','é','í','ó','ú','ü','ñ'];
-        $to   = ['A','E','I','O','U','U','N','a','e','i','o','u','u','n'];
+        $from = ['Á', 'É', 'Í', 'Ó', 'Ú', 'Ü', 'Ñ', 'á', 'é', 'í', 'ó', 'ú', 'ü', 'ñ'];
+        $to = ['A', 'E', 'I', 'O', 'U', 'U', 'N', 'a', 'e', 'i', 'o', 'u', 'u', 'n'];
+
         return str_replace($from, $to, $value);
     }
 }

@@ -28,10 +28,10 @@ class AgentDevice extends Model
     ];
 
     protected $casts = [
-        'status'             => AgentDeviceStatus::class,
-        'last_heartbeat_at'  => 'datetime',
+        'status' => AgentDeviceStatus::class,
+        'last_heartbeat_at' => 'datetime',
         'last_snapshot_json' => 'array',
-        'last_health_json'   => 'array',
+        'last_health_json' => 'array',
     ];
 
     protected $hidden = ['api_token'];

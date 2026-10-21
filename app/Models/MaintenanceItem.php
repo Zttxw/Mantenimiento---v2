@@ -20,11 +20,11 @@ class MaintenanceItem extends Model
     ];
 
     protected $casts = [
-        'item_type'  => MaintenanceItemType::class,
-        'quantity'   => 'integer',
-        'unit_cost'  => 'decimal:2',
+        'item_type' => MaintenanceItemType::class,
+        'quantity' => 'integer',
+        'unit_cost' => 'decimal:2',
         'total_cost' => 'decimal:2',
-        'data_json'  => 'array',
+        'data_json' => 'array',
     ];
 
     public function maintenanceCase(): BelongsTo

@@ -1,49 +1,70 @@
 <?php
 
 return [
-    'sidebar_modules' => [
-        ['key' => 'dashboard', 'label' => 'Dashboard', 'route' => 'dashboard', 'icon' => 'squares'],
-        ['key' => 'assets', 'label' => 'Activos', 'route' => null, 'icon' => 'cube'],
-        ['key' => 'maintenance', 'label' => 'Mantenimiento', 'route' => null, 'icon' => 'wrench'],
-        ['key' => 'organization', 'label' => 'Organizacion', 'route' => null, 'icon' => 'building'],
-        ['key' => 'documents', 'label' => 'Documentos', 'route' => null, 'icon' => 'document'],
-        ['key' => 'users', 'label' => 'Usuarios', 'route' => null, 'icon' => 'users'],
+    /*
+    |--------------------------------------------------------------------------
+    | Navegación Principal SIGAT - 4 Macro-Módulos
+    |--------------------------------------------------------------------------
+    | Estructura unificada para la barra lateral y accesos rápidos.
+    */
+
+    'modules' => [
+        'soporte' => [
+            'key' => 'soporte',
+            'label' => 'Soporte y Tickets',
+            'icon' => 'clipboard',
+            'description' => 'Mesa de ayuda e incidencias',
+            'items' => [
+                ['label' => 'Cola de Trabajo', 'route' => 'tecnico.work-queue', 'description' => 'Casos asignados y pendientes'],
+                ['label' => 'Atender Equipo', 'route' => 'tecnico.attend-asset', 'description' => 'Diagnóstico y atención técnica'],
+                ['label' => 'Todos los Casos', 'route' => 'maintenance-cases.index', 'description' => 'Historial completo de tickets'],
+            ],
+        ],
+        'campanas' => [
+            'key' => 'campanas',
+            'label' => 'Campañas Preventivas',
+            'icon' => 'wrench',
+            'description' => 'Mantenimiento preventivo masivo',
+            'items' => [
+                ['label' => 'Campañas y Cronograma', 'route' => 'campaigns.index', 'description' => 'Planificación y seguimiento'],
+                ['label' => 'Plantillas de Tareas', 'route' => 'maintenance-templates.index', 'description' => 'Checklists y paquetes de servicio'],
+            ],
+        ],
+        'inventario' => [
+            'key' => 'inventario',
+            'label' => 'Inventario y Recursos',
+            'icon' => 'cube',
+            'description' => 'Equipos, agentes y personal',
+            'items' => [
+                ['label' => 'Inventario de Activos', 'route' => 'assets.index', 'description' => 'Computadoras, laptops y equipos'],
+                ['label' => 'Monitor de PCs (Agentes)', 'route' => 'assets.pc-monitor', 'description' => 'Telemetría y software en tiempo real'],
+                ['label' => 'Movimientos y Traslados', 'route' => 'asset-movements.index', 'description' => 'Custodias y transferencias'],
+                ['label' => 'Oficinas y Unidades', 'route' => 'organizational-units.index', 'description' => 'Estructura institucional'],
+                ['label' => 'Personal / Empleados', 'route' => 'employees.index', 'description' => 'Directorio de trabajadores'],
+            ],
+        ],
+        'gestion' => [
+            'key' => 'gestion',
+            'label' => 'Reportes y Control',
+            'icon' => 'document',
+            'description' => 'Documentación oficial y accesos',
+            'items' => [
+                ['label' => 'Reportes y Actas Oficiales', 'route' => 'documents.index', 'description' => 'Informes técnicos y actas firmadas'],
+                ['label' => 'Usuarios del Sistema', 'route' => 'users.index', 'description' => 'Cuentas y personal autorizado', 'role' => 'coordinador_oti|admin'],
+                ['label' => 'Roles y Permisos', 'route' => 'admin.roles.index', 'description' => 'Seguridad y niveles de acceso', 'role' => 'coordinador_oti|admin'],
+                ['label' => 'Configuración', 'route' => 'settings.index', 'description' => 'Parámetros del sistema', 'permission' => 'setting.view'],
+                ['label' => 'Agentes de Monitoreo', 'route' => 'agents.index', 'description' => 'Dispositivos cliente vinculados', 'permission' => 'setting.view'],
+            ],
+        ],
     ],
 
-    'sidebar_technician' => [
-        ['label' => 'Mi Panel', 'route' => 'tecnico.dashboard', 'description' => 'Casos asignados y resumen'],
-        ['label' => 'Cola de trabajo', 'route' => 'tecnico.work-queue', 'description' => 'Pendientes, en proceso y completados'],
-        ['label' => 'Atender equipo', 'route' => 'tecnico.attend-asset', 'description' => 'Flujo rapido de mantenimiento'],
-    ],
-    'sidebar_submenus' => [
-        'assets' => [
-            ['label' => 'Inventario', 'route' => 'assets.index', 'description' => 'Gestionar activos tecnologicos'],
-            ['label' => 'Monitor de PCs', 'route' => 'assets.pc-monitor', 'description' => 'Estado y software de equipos PC'],
-            ['label' => 'Movimientos', 'route' => 'asset-movements.index', 'description' => 'Asignaciones y transferencias'],
-        ],
-        'maintenance' => [
-            ['label' => 'Casos', 'route' => 'maintenance-cases.index', 'description' => 'Casos de mantenimiento'],
-            ['label' => 'Campanas', 'route' => 'campaigns.index', 'description' => 'Campanas preventivas'],
-            ['label' => 'Plantillas', 'route' => 'maintenance-templates.index', 'description' => 'Plantillas de mantenimiento'],
-        ],
-        'organization' => [
-            ['label' => 'Unidades', 'route' => 'organizational-units.index', 'description' => 'Estructura organizacional'],
-            ['label' => 'Empleados', 'route' => 'employees.index', 'description' => 'Personal registrado'],
-        ],
-        'documents' => [
-            ['label' => 'Documentos', 'route' => 'documents.index', 'description' => 'Fichas y actas generadas'],
-        ],
-        'users' => [
-            ['label' => 'Usuarios', 'route' => 'users.index', 'description' => 'Gestionar cuentas del sistema'],
-            ['label' => 'Roles', 'route' => 'admin.roles.index', 'description' => 'Roles y permisos'],
-            ['label' => 'Permisos', 'route' => 'admin.permissions.index', 'description' => 'Permisos granulares'],
-        ],
-    ],
     'command_palette_actions' => [
-        ['label' => 'Ir al Dashboard', 'desc' => 'Vista general del sistema', 'icon' => 'squares', 'route' => 'dashboard'],
-        ['label' => 'Nuevo activo', 'desc' => 'Registrar un activo tecnologico', 'icon' => 'cube', 'route' => 'assets.create'],
-        ['label' => 'Nuevo caso de mantenimiento', 'desc' => 'Crear caso correctivo o preventivo', 'icon' => 'wrench', 'route' => 'maintenance-cases.create'],
-        ['label' => 'Buscar empleado', 'desc' => 'Directorio de empleados', 'icon' => 'users', 'route' => 'employees.index'],
-        ['label' => 'Ver movimientos', 'desc' => 'Historial de movimientos de activos', 'icon' => 'document', 'route' => 'asset-movements.index'],
+        ['label' => 'Ir al Dashboard', 'desc' => 'Panel de control principal', 'icon' => 'squares', 'route' => 'dashboard'],
+        ['label' => 'Cola de trabajo', 'desc' => 'Casos y tickets pendientes', 'icon' => 'clipboard', 'route' => 'tecnico.work-queue'],
+        ['label' => 'Atender equipo', 'desc' => 'Diagnóstico rápido de PC', 'icon' => 'wrench', 'route' => 'tecnico.attend-asset'],
+        ['label' => 'Nuevo activo', 'desc' => 'Registrar equipo informático', 'icon' => 'cube', 'route' => 'assets.create'],
+        ['label' => 'Nueva campaña', 'desc' => 'Crear campaña preventiva', 'icon' => 'wrench', 'route' => 'campaigns.create'],
+        ['label' => 'Buscar en inventario', 'desc' => 'Consultar activos y PCs', 'icon' => 'cube', 'route' => 'assets.index'],
+        ['label' => 'Ver actas e informes', 'desc' => 'Centro de documentos oficiales', 'icon' => 'document', 'route' => 'documents.index'],
     ],
 ];

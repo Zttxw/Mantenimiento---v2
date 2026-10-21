@@ -21,7 +21,7 @@ class AiLog extends Model
     ];
 
     protected $casts = [
-        'status'    => AiLogStatus::class,
+        'status' => AiLogStatus::class,
         'meta_json' => 'array',
     ];
 

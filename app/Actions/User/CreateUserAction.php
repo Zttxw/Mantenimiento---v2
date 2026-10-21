@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Actions\User;
 
 use App\DTOs\User\CreateUserDTO;
@@ -11,9 +12,10 @@ class CreateUserAction
     {
         return DB::transaction(function () use ($dto) {
             $user = User::create($dto->toArray());
-            if ($dto->role){
+            if ($dto->role) {
                 $user->assignRole($dto->role);
             }
+
             return $user;
         });
     }

@@ -12,6 +12,7 @@ class UpdateCampaignAction
     {
         return DB::transaction(function () use ($campaign, $dto) {
             $campaign->update($dto->toArray());
+
             return $campaign->fresh();
         });
     }

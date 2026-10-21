@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Symphony\Component\HttpFoundation\Response;
 
 class OrganizationalUnitException extends Exception
@@ -33,6 +34,7 @@ class OrganizationalUnitException extends Exception
             "No se puede eliminar la unidad organizacional {$name} porque tiene hijos. Eliminar los hijos primero.",
         );
     }
+
     public static function hasEmployees(string $name): self
     {
         return new self(
@@ -54,10 +56,10 @@ class OrganizationalUnitException extends Exception
         );
     }
 
-    public function render(): \Illuminate\Http\JsonResponse
+    public function render(): JsonResponse
     {
-        return response ()->json([
-            'message' => $this-getMessage(),
+        return response()->json([
+            'message' => $this - getMessage(),
         ], $this->statusCode);
     }
 }

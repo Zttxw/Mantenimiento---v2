@@ -1,10 +1,10 @@
 <?php
+
 namespace App\Http\Requests\OrganizationalUnit;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Enum;
 use App\Enums\OrgUnitType;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Enum;
 
 class StoreOrganizationalUnitRequest extends FormRequest
 {
@@ -16,14 +16,14 @@ class StoreOrganizationalUnitRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'parent_id'     => ['nullable', 'exists:organizational_units,id'],
-            'type'          => ['required', 'string', new Enum(OrgUnitType::class)],
-            'code'          => ['required', 'string', 'max:100', 'unique:organizational_units,code'],
-            'name'          => ['required', 'string', 'max:255'],
+            'parent_id' => ['nullable', 'exists:organizational_units,id'],
+            'type' => ['required', 'string', new Enum(OrgUnitType::class)],
+            'code' => ['required', 'string', 'max:100', 'unique:organizational_units,code'],
+            'name' => ['required', 'string', 'max:255'],
             'responsible_employee_id' => ['nullable', 'exists:employees,id'],
-            'meta_json'     => ['nullable', 'json'],
-            'is_active'     => ['boolean'],
-            'sort_order'    => ['nullable', 'integer'],
+            'meta_json' => ['nullable', 'json'],
+            'is_active' => ['boolean'],
+            'sort_order' => ['nullable', 'integer'],
         ];
     }
 }

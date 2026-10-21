@@ -5,15 +5,15 @@ namespace App\Http\Controllers;
 use App\DTOs\AgentDevice\HeartbeatDTO;
 use App\DTOs\AgentDevice\RegisterAgentDTO;
 use App\DTOs\AgentSync\CreateAgentSyncDTO;
+use App\Enums\AgentSyncType;
 use App\Http\Requests\Agent\HeartbeatRequest;
 use App\Http\Requests\Agent\RegisterAgentRequest;
 use App\Http\Requests\Agent\SyncRequest;
 use App\Models\AgentDevice;
 use App\Models\Asset;
-use App\Enums\AgentSyncType;
 use App\Services\AgentDevice\AgentDeviceService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AgentDeviceController extends Controller
 {
@@ -50,11 +50,11 @@ class AgentDeviceController extends Controller
         }
 
         return response()->json([
-            'message'    => 'Agente registrado correctamente.',
-            'uuid'       => $device->uuid,
-            'api_token'  => $apiToken,  // Solo se devuelve en el registro
-            'agentUuid'  => $device->uuid,
-            'apiToken'   => $apiToken,
+            'message' => 'Agente registrado correctamente.',
+            'uuid' => $device->uuid,
+            'api_token' => $apiToken,  // Solo se devuelve en el registro
+            'agentUuid' => $device->uuid,
+            'apiToken' => $apiToken,
         ], 201);
     }
 
@@ -90,8 +90,8 @@ class AgentDeviceController extends Controller
         $sync = $this->agentDeviceService->receiveSync($device, $dto);
 
         return response()->json([
-            'message'          => 'Sincronización recibida.',
-            'sync_id'          => $sync?->id,
+            'message' => 'Sincronización recibida.',
+            'sync_id' => $sync?->id,
             'changes_detected' => $sync !== null,
         ]);
     }
@@ -122,8 +122,8 @@ class AgentDeviceController extends Controller
         $sync = $this->agentDeviceService->receiveSync($device, $dto);
 
         return response()->json([
-            'message'          => 'Snapshot recibido.',
-            'sync_id'          => $sync?->id,
+            'message' => 'Snapshot recibido.',
+            'sync_id' => $sync?->id,
             'changes_detected' => $sync !== null,
         ]);
     }
@@ -177,8 +177,8 @@ class AgentDeviceController extends Controller
             ->orderBy('created_at')
             ->get(['id', 'created_at', 'payload_json'])
             ->map(fn ($s) => [
-                'ts'      => $s->created_at->timestamp,
-                'ip'      => data_get($s->payload_json, 'last_ip'),
+                'ts' => $s->created_at->timestamp,
+                'ip' => data_get($s->payload_json, 'last_ip'),
                 'version' => data_get($s->payload_json, 'agent_version'),
             ])
             ->values()
@@ -186,12 +186,12 @@ class AgentDeviceController extends Controller
 
         return response()->json([
             'last_heartbeat_at' => $agentDevice->last_heartbeat_at?->timestamp,
-            'status'            => $agentDevice->status->value,
-            'is_online'         => $agentDevice->isOnline(),
-            'last_ip'           => $agentDevice->last_ip,
-            'agent_version'     => $agentDevice->agent_version,
-            'heartbeats'        => $heartbeats,
-            'server_ts'         => now()->timestamp,
+            'status' => $agentDevice->status->value,
+            'is_online' => $agentDevice->isOnline(),
+            'last_ip' => $agentDevice->last_ip,
+            'agent_version' => $agentDevice->agent_version,
+            'heartbeats' => $heartbeats,
+            'server_ts' => now()->timestamp,
         ]);
     }
 
@@ -207,8 +207,8 @@ class AgentDeviceController extends Controller
             ->orderBy('created_at')
             ->get(['id', 'created_at', 'payload_json', 'status'])
             ->map(fn ($s) => [
-                'ts'      => $s->created_at->timestamp,
-                'ip'      => data_get($s->payload_json, 'last_ip'),
+                'ts' => $s->created_at->timestamp,
+                'ip' => data_get($s->payload_json, 'last_ip'),
                 'version' => data_get($s->payload_json, 'agent_version'),
             ])
             ->values()

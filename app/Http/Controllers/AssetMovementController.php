@@ -31,10 +31,10 @@ class AssetMovementController extends Controller
     {
         $this->authorize('asset-movement.create');
 
-        $assets    = Asset::orderBy('name')->get();
-        $units     = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
+        $assets = Asset::orderBy('name')->get();
+        $units = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
         $employees = Employee::where('is_active', true)->orderBy('full_name')->get();
-        $types     = MovementType::cases();
+        $types = MovementType::cases();
 
         return view('asset-movements.create', compact('assets', 'units', 'employees', 'types'));
     }

@@ -24,10 +24,10 @@ return new class extends Migration
             $table->string('status', 30)->default('disponible');      // Enum AssetStatus
             $table->string('condition', 30)->default('bueno');        // Enum AssetCondition
             $table->foreignId('organizational_unit_id')
-                  ->nullable()->constrained()->nullOnDelete();
+                ->nullable()->constrained()->nullOnDelete();
             $table->foreignId('responsible_employee_id')
-                  ->nullable()->constrained('employees')->nullOnDelete();
-            //$table->foreignId('supplier_id')->nullable()->constrained()->nullOnDelete();
+                ->nullable()->constrained('employees')->nullOnDelete();
+            // $table->foreignId('supplier_id')->nullable()->constrained()->nullOnDelete();
             $table->date('purchase_date')->nullable();
             $table->decimal('reference_value', 12, 2)->nullable(); // valor de compra
             $table->jsonb('specs_json')->nullable();     // CPU, RAM, disco, etc.

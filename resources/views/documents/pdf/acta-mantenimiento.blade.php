@@ -161,7 +161,7 @@
 
     {{-- Tabla de activos --}}
     <div class="section">
-        <div class="section-title">3. Activos y Casos de Mantenimiento</div>
+        <div class="section-title">3. Activos y Mantenimiento Preventivo Ejecutado</div>
 
         @if ($assets->isEmpty())
         <div class="text-box text-center text-muted">No se encontraron activos de esta unidad en la campaña.</div>
@@ -169,21 +169,29 @@
         <table class="assets">
             <thead>
                 <tr>
-                    <th style="width:13%">Código</th>
-                    <th style="width:22%">Nombre / Equipo</th>
-                    <th style="width:10%">Tipo</th>
-                    <th style="width:10%">Estado</th>
-                    <th style="width:16%">Unidad</th>
-                    <th style="width:29%">Casos en campaña</th>
+                    <th style="width:14%">Código / Patr.</th>
+                    <th style="width:24%">Nombre / Equipo</th>
+                    <th style="width:12%">Tipo</th>
+                    <th style="width:14%">Estado Atención</th>
+                    <th style="width:16%">Técnico / Fecha</th>
+                    <th style="width:20%">Actividades / Checklist</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($assets as $asset)
                 @php
-                    $cases = $asset->maintenanceCases;
+                    $ca = $asset->campaignAssets->first();
+                    $isAttended = $ca && $ca->status->value === 'atendido';
+                    $attendedType = $ca?->attended_type === 'agente' ? 'Agente SIGAT' : ($ca?->attended_type === 'manual' ? 'Manual en Campo' : '—');
+                    $technician = $ca?->attendedByEmployee ?? $ca?->assignedTechnician;
                 @endphp
                 <tr>
-                    <td>{{ $asset->asset_code }}</td>
+                    <td>
+                        <span class="fw-bold">{{ $asset->internal_code }}</span>
+                        @if ($asset->patrimonial_code)
+                        <br><span class="text-muted" style="font-size:6.5pt">Pat: {{ $asset->patrimonial_code }}</span>
+                        @endif
+                    </td>
                     <td>
                         <span class="fw-bold">{{ $asset->name }}</span>
                         @if ($asset->brand || $asset->model)
@@ -191,39 +199,31 @@
                         @endif
                     </td>
                     <td>{{ $asset->asset_type->label() }}</td>
-                    <td>{{ $asset->status->label() }}</td>
-                    <td>{{ $asset->organizationalUnit?->name ?? '—' }}</td>
                     <td>
-                        @if ($cases->isEmpty())
-                            <span class="text-muted" style="font-style:italic">Sin casos registrados</span>
+                        @if ($isAttended)
+                            <span class="badge badge-success">Atendido</span>
+                            <br><span class="text-muted" style="font-size:6.5pt">({{ $attendedType }})</span>
                         @else
-                        <table class="cases">
-                            <thead>
-                                <tr>
-                                    <th>Caso</th>
-                                    <th>Tipo</th>
-                                    <th>Técnico</th>
-                                    <th>Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($cases as $c)
-                                <tr>
-                                    <td>{{ $c->code }}</td>
-                                    <td>{{ $c->maintenance_type->label() }}</td>
-                                    <td>{{ $c->assignedTechnician?->full_name ?? '—' }}</td>
-                                    <td>{{ $c->status->label() }}</td>
-                                </tr>
-                                @if ($c->actions_taken)
-                                <tr>
-                                    <td colspan="4" style="color:#475569;padding-left:8px">
-                                        <em>Acciones: {{ Str::limit($c->actions_taken, 120) }}</em>
-                                    </td>
-                                </tr>
-                                @endif
-                                @endforeach
-                            </tbody>
-                        </table>
+                            <span class="badge badge-neutral">{{ $ca?->status?->label() ?? 'Pendiente' }}</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if ($ca?->attended_date)
+                            {{ $ca->attended_date->format('d/m/Y') }}
+                            <br><span class="text-muted" style="font-size:6.5pt">{{ $technician?->full_name ?? '—' }}</span>
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if ($ca && !empty($ca->checklist_tasks))
+                            <span style="font-size:6.5pt; color:#334155;">
+                                {{ implode(', ', array_map(fn($t) => ucwords(str_replace('_', ' ', $t)), (array)$ca->checklist_tasks)) }}
+                            </span>
+                        @elseif ($ca?->notes)
+                            <span style="font-size:6.5pt; color:#475569;">{{ Str::limit($ca->notes, 60) }}</span>
+                        @else
+                            <span class="text-muted" style="font-size:6.5pt; font-style:italic">Sin tareas registradas</span>
                         @endif
                     </td>
                 </tr>
@@ -235,34 +235,36 @@
 
     {{-- Resumen --}}
     @php
-        $totalCases     = $assets->sum(fn ($a) => $a->maintenanceCases->count());
-        $completedCases = $assets->sum(fn ($a) => $a->maintenanceCases->where('status.value', 'completado')->count());
-        $totalCost      = $assets->sum(fn ($a) => $a->maintenanceCases->sum('total_cost'));
+        $totalIncluded = $assets->count();
+        $attendedAgent = $assets->filter(fn ($a) => $a->campaignAssets->first()?->status?->value === 'atendido' && $a->campaignAssets->first()?->attended_type === 'agente')->count();
+        $attendedManual = $assets->filter(fn ($a) => $a->campaignAssets->first()?->status?->value === 'atendido' && $a->campaignAssets->first()?->attended_type === 'manual')->count();
+        $totalAttended = $attendedAgent + $attendedManual;
+        $totalPending = $totalIncluded - $totalAttended;
     @endphp
     <div class="section">
-        <div class="section-title">4. Resumen</div>
+        <div class="section-title">4. Resumen de Ejecución</div>
         <div class="two-col">
             <div class="col-half">
                 <div class="data-grid">
                     <div class="data-row">
-                        <div class="data-label">Activos incluidos</div>
-                        <div class="data-value fw-bold">{{ $assets->count() }}</div>
+                        <div class="data-label">Total Activos Unidad</div>
+                        <div class="data-value fw-bold">{{ $totalIncluded }}</div>
                     </div>
                     <div class="data-row">
-                        <div class="data-label">Casos registrados</div>
-                        <div class="data-value">{{ $totalCases }}</div>
+                        <div class="data-label">Total Atendidos</div>
+                        <div class="data-value fw-bold" style="color: #166534;">{{ $totalAttended }}</div>
                     </div>
                 </div>
             </div>
             <div class="col-half">
                 <div class="data-grid">
                     <div class="data-row">
-                        <div class="data-label">Costo total</div>
-                        <div class="data-value fw-bold">{{ $totalCost > 0 ? 'S/ ' . number_format($totalCost, 2) : '—' }}</div>
+                        <div class="data-label">Vía Agente / Manual</div>
+                        <div class="data-value">{{ $attendedAgent }} agente / {{ $attendedManual }} manual</div>
                     </div>
                     <div class="data-row">
-                        <div class="data-label">Fecha del acta</div>
-                        <div class="data-value">{{ now()->format('d/m/Y') }}</div>
+                        <div class="data-label">Pendientes</div>
+                        <div class="data-value">{{ $totalPending }}</div>
                     </div>
                 </div>
             </div>

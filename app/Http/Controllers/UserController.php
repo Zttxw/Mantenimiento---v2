@@ -23,7 +23,7 @@ class UserController extends Controller
         $this->authorize('user.view');
 
         $users = $this->userService->getPaginated(request()->only([
-            'search', 'role', 'status'
+            'search', 'role', 'status',
         ]));
 
         $roles = $this->roleService->getAll();
@@ -74,7 +74,7 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user)
     {
         $this->userService->update(
-            $user, 
+            $user,
             UpdateUserDTO::fromArray($request->validated())
         );
 

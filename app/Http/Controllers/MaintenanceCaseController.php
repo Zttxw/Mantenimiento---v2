@@ -38,8 +38,8 @@ class MaintenanceCaseController extends Controller
             'search', 'status', 'type', 'technician_id', 'asset_id', 'campaign_id',
         ]));
 
-        $types      = MaintenanceType::cases();
-        $statuses   = MaintenanceCaseStatus::cases();
+        $types = MaintenanceType::cases();
+        $statuses = MaintenanceCaseStatus::cases();
         $technicians = Employee::technicians()->orderBy('full_name')->get();
 
         return view('maintenance-cases.index', compact('cases', 'types', 'statuses', 'technicians'));
@@ -49,12 +49,12 @@ class MaintenanceCaseController extends Controller
     {
         $this->authorize('maintenance-case.create');
 
-        $assets      = Asset::orderBy('name')->get();
+        $assets = Asset::orderBy('name')->get();
         $technicians = Employee::technicians()->orderBy('full_name')->get();
-        $employees   = Employee::where('is_active', true)->orderBy('full_name')->get();
-        $types       = MaintenanceType::cases();
-        $priorities  = MaintenancePriority::cases();
-        $templates   = $this->templateService->getActiveByType(null);
+        $employees = Employee::where('is_active', true)->orderBy('full_name')->get();
+        $types = MaintenanceType::cases();
+        $priorities = MaintenancePriority::cases();
+        $templates = $this->templateService->getActiveByType(null);
 
         return view('maintenance-cases.create', compact('assets', 'technicians', 'employees', 'types', 'priorities', 'templates'));
     }
@@ -62,7 +62,7 @@ class MaintenanceCaseController extends Controller
     public function store(StoreMaintenanceCaseRequest $request)
     {
         $data = array_merge($request->validated(), [
-            'created_by'             => auth()->id(),
+            'created_by' => auth()->id(),
             'reported_by_employee_id' => $request->validated()['reported_by_employee_id']
                                         ?? auth()->user()->employee_id,
         ]);
@@ -97,11 +97,11 @@ class MaintenanceCaseController extends Controller
         foreach ($template->items as $tItem) {
             $this->caseService->addItem($maintenanceCase, CreateMaintenanceItemDTO::fromArray([
                 'maintenance_case_id' => $maintenanceCase->id,
-                'item_type'           => $tItem->item_type->value,
-                'name'                => $tItem->name,
-                'description'         => $tItem->description,
-                'quantity'            => $tItem->quantity,
-                'unit_cost'           => $tItem->unit_cost,
+                'item_type' => $tItem->item_type->value,
+                'name' => $tItem->name,
+                'description' => $tItem->description,
+                'quantity' => $tItem->quantity,
+                'unit_cost' => $tItem->unit_cost,
             ]));
         }
 
@@ -113,10 +113,10 @@ class MaintenanceCaseController extends Controller
         $this->authorize('maintenance-case.edit');
 
         $technicians = Employee::technicians()->orderBy('full_name')->get();
-        $types       = MaintenanceType::cases();
-        $priorities  = MaintenancePriority::cases();
-        $statuses    = MaintenanceCaseStatus::cases();
-        $templates   = $this->templateService->getActiveByType($maintenanceCase->maintenance_type->value);
+        $types = MaintenanceType::cases();
+        $priorities = MaintenancePriority::cases();
+        $statuses = MaintenanceCaseStatus::cases();
+        $templates = $this->templateService->getActiveByType($maintenanceCase->maintenance_type->value);
 
         return view('maintenance-cases.edit', compact('maintenanceCase', 'technicians', 'types', 'priorities', 'statuses', 'templates'));
     }
@@ -170,7 +170,7 @@ class MaintenanceCaseController extends Controller
 
         $document = $this->docGenerator->generateInformeTecnico($maintenanceCase, auth()->user());
 
-        $filename = str_replace(['/', '\\', ':'], '-', $document->title) . '.pdf';
+        $filename = str_replace(['/', '\\', ':'], '-', $document->title).'.pdf';
 
         return Storage::disk('local')->download($document->file_path, $filename);
     }

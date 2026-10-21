@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\OrgUnitType;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Enums\OrgUnitType;
-
-use Illuminate\Database\Eloquent\Model;
 
 class OrganizationalUnit extends Model
 {
@@ -60,6 +59,7 @@ class OrganizationalUnit extends Model
             $current = $current->parent;
             $path->prepend($current->name);
         }
+
         return $path->implode(' > ');
     }
 }

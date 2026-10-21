@@ -38,13 +38,13 @@ class Asset extends Model
     ];
 
     protected $casts = [
-        'asset_type'     => AssetType::class,
-        'status'         => AssetStatus::class,
-        'condition'      => AssetCondition::class,
-        'purchase_date'  => 'date',
+        'asset_type' => AssetType::class,
+        'status' => AssetStatus::class,
+        'condition' => AssetCondition::class,
+        'purchase_date' => 'date',
         'reference_value' => 'decimal:2',
-        'specs_json'     => 'array',
-        'extra_json'     => 'array',
+        'specs_json' => 'array',
+        'extra_json' => 'array',
     ];
 
     protected static function booted(): void
@@ -91,7 +91,7 @@ class Asset extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class, 'reference_id')
-                    ->where('reference_type', self::class);
+            ->where('reference_type', self::class);
     }
 
     // Scopes
@@ -104,10 +104,10 @@ class Asset extends Model
 
         return $query->where(function (Builder $q) use ($term) {
             $q->where('name', 'like', "%{$term}%")
-              ->orWhere('internal_code', 'like', "%{$term}%")
-              ->orWhere('patrimonial_code', 'like', "%{$term}%")
-              ->orWhere('serial_number', 'like', "%{$term}%")
-              ->orWhere('brand', 'like', "%{$term}%");
+                ->orWhere('internal_code', 'like', "%{$term}%")
+                ->orWhere('patrimonial_code', 'like', "%{$term}%")
+                ->orWhere('serial_number', 'like', "%{$term}%")
+                ->orWhere('brand', 'like', "%{$term}%");
         });
     }
 

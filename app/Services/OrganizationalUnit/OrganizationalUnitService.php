@@ -22,15 +22,12 @@ class OrganizationalUnitService
     public function getPaginated(array $filters = []): LengthAwarePaginator
     {
         return OrganizationalUnit::with('parent', 'responsible')
-            ->when($filters['search'] ?? null, fn ($q, $s) =>
-                $q->where('name', 'like', "%{$s}%")
-                  ->orWhere('code', 'like', "%{$s}%")
+            ->when($filters['search'] ?? null, fn ($q, $s) => $q->where('name', 'like', "%{$s}%")
+                ->orWhere('code', 'like', "%{$s}%")
             )
-            ->when($filters['type'] ?? null, fn ($q, $t) =>
-                $q->where('type', $t)
+            ->when($filters['type'] ?? null, fn ($q, $t) => $q->where('type', $t)
             )
-            ->when(isset($filters['status']), fn ($q) =>
-                $q->where('is_active', $filters['status'] === 'active')
+            ->when(isset($filters['status']), fn ($q) => $q->where('is_active', $filters['status'] === 'active')
             )
             ->orderBy('sort_order')
             ->paginate(15)
@@ -54,6 +51,7 @@ class OrganizationalUnitService
         }
 
         $unit->update($dto->toArray());
+
         return $unit->fresh();
     }
 

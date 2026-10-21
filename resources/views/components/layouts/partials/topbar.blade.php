@@ -10,15 +10,6 @@
         @endisset
     </div>
 
-    {{-- Center: Search trigger --}}
-    <button
-        @click="$store.commandPalette.toggle()"
-        class="hidden md:flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-100/80 hover:bg-slate-200/80 border border-slate-200/60 text-slate-400 text-sm transition-all duration-200 min-w-[280px]"
-    >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-        <span>Buscar...</span>
-        <kbd class="ml-auto text-[10px] font-mono bg-white/80 border border-slate-200 rounded-md px-1.5 py-0.5 text-slate-400">Ctrl K</kbd>
-    </button>
 
     {{-- Right: Actions --}}
     <div class="flex items-center gap-2">
@@ -30,12 +21,12 @@
 
         {{-- User Menu --}}
         <div x-data="{ open: false }" class="relative">
-            <button @click="open = !open" class="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-xl hover:bg-slate-100 transition-colors">
-                <div class="text-right hidden sm:block">
-                    <p class="text-sm font-semibold text-slate-800 leading-tight">{{ auth()->user()->username ?? 'Admin' }}</p>
-                    <p class="text-xs text-slate-400">{{ auth()->user()?->role?->name ?? 'Administrador' }}</p>
+            <button @click="open = !open" class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-100 transition-colors">
+                <div class="w-7 h-7 rounded-full bg-zinc-900 text-white flex items-center justify-center font-mono text-xs font-semibold">
+                    {{ strtoupper(substr(auth()->user()->username ?? 'U', 0, 1)) }}
                 </div>
-                <x-ui.avatar :name="auth()->user()->name ?? 'A'" size="sm" />
+                <span class="text-xs font-medium text-zinc-700 hidden sm:inline">{{ auth()->user()->username ?? 'Usuario' }}</span>
+                <svg class="w-3 h-3 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
             </button>
 
             <div
@@ -59,7 +50,7 @@
                     Configuracion
                 </a>
                 <div class="my-1.5 border-t border-slate-100"></div>
-                <form method="POST" action="{{ 'logout' }}">
+                <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9"/></svg>

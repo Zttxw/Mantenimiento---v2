@@ -17,18 +17,18 @@ class MaintenanceCaseService
     public function __construct(
         private readonly CreateCaseAction $createAction,
         private readonly UpdateCaseAction $updateAction,
-        private readonly CloseCaseAction  $closeAction,
+        private readonly CloseCaseAction $closeAction,
     ) {}
 
     public function getPaginated(array $filters = []): LengthAwarePaginator
     {
-        return MaintenanceCase::with('asset', 'assignedTechnician', 'campaign')
+        return MaintenanceCase::with('asset', 'assignedTechnician')
+            ->whereNull('campaign_id') // Aislamiento total: solo tickets de soporte y mesa de ayuda
             ->search($filters['search'] ?? null)
             ->byStatus($filters['status'] ?? null)
             ->byType($filters['type'] ?? null)
             ->byTechnician($filters['technician_id'] ?? null)
             ->when($filters['asset_id'] ?? null, fn ($q, $id) => $q->where('asset_id', $id))
-            ->when($filters['campaign_id'] ?? null, fn ($q, $id) => $q->where('campaign_id', $id))
             ->latest()
             ->paginate(15)
             ->withQueryString();

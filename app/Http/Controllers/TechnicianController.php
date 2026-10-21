@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DTOs\MaintenanceItem\CreateMaintenanceItemDTO;
 use App\Enums\DocumentType;
 use App\Enums\MaintenanceCaseStatus;
 use App\Enums\MaintenanceItemType;
@@ -53,11 +54,11 @@ class TechnicianController extends Controller
         $templates = $this->maintenanceTemplateService->getActiveByType(null);
 
         return view('technicians.attend-asset', array_merge($formData, [
-            'types'            => MaintenanceType::cases(),
-            'priorities'       => MaintenancePriority::cases(),
-            'itemTypes'        => MaintenanceItemType::cases(),
-            'templates'        => $templates,
-            'employee'        => auth()->user()->employee,
+            'types' => MaintenanceType::cases(),
+            'priorities' => MaintenancePriority::cases(),
+            'itemTypes' => MaintenanceItemType::cases(),
+            'templates' => $templates,
+            'employee' => auth()->user()->employee,
             'preselectedAsset' => $preselectedAsset,
         ]));
     }
@@ -73,11 +74,11 @@ class TechnicianController extends Controller
 
         return view('technicians.case-workflow', [
             'maintenanceCase' => $maintenanceCase,
-            'types'           => MaintenanceType::cases(),
-            'priorities'      => MaintenancePriority::cases(),
-            'itemTypes'       => MaintenanceItemType::cases(),
-            'templates'       => $templates,
-            'isClosed'        => in_array($maintenanceCase->status->value, ['completado', 'cancelado']),
+            'types' => MaintenanceType::cases(),
+            'priorities' => MaintenancePriority::cases(),
+            'itemTypes' => MaintenanceItemType::cases(),
+            'templates' => $templates,
+            'isClosed' => in_array($maintenanceCase->status->value, ['completado', 'cancelado']),
         ]);
     }
 
@@ -87,10 +88,10 @@ class TechnicianController extends Controller
 
         $maintenanceCase->load('asset', 'asset.organizationalUnit', 'campaign', 'reportedBy', 'assignedTechnician', 'items', 'documents');
 
-        $itemTypes    = MaintenanceItemType::cases();
+        $itemTypes = MaintenanceItemType::cases();
         $documentTypes = DocumentType::cases();
-        $statuses     = MaintenanceCaseStatus::cases();
-        $isClosed     = in_array($maintenanceCase->status->value, ['completado', 'cancelado']);
+        $statuses = MaintenanceCaseStatus::cases();
+        $isClosed = in_array($maintenanceCase->status->value, ['completado', 'cancelado']);
 
         return view('technicians.case-detail', compact(
             'maintenanceCase', 'itemTypes', 'documentTypes', 'statuses', 'isClosed'
@@ -103,22 +104,22 @@ class TechnicianController extends Controller
 
         $data = $request->validate([
             'maintenance_type' => ['nullable', 'string'],
-            'priority'      => ['nullable', 'string'],
-            'status'        => ['nullable', 'in:pendiente,en_progreso,en_espera'],
+            'priority' => ['nullable', 'string'],
+            'status' => ['nullable', 'in:pendiente,en_progreso,en_espera'],
             'problem_description' => ['nullable', 'string', 'max:2000'],
-            'diagnosis'     => ['nullable', 'string', 'max:2000'],
+            'diagnosis' => ['nullable', 'string', 'max:2000'],
             'actions_taken' => ['nullable', 'string', 'max:2000'],
-            'notes'         => ['nullable', 'string', 'max:1000'],
-            'items'               => ['nullable', 'array'],
-            'items.*.item_type'   => ['required_with:items', 'string'],
-            'items.*.name'        => ['required_with:items', 'string', 'max:255'],
-            'items.*.quantity'    => ['required_with:items', 'integer', 'min:1'],
-            'items.*.unit_cost'   => ['nullable', 'numeric', 'min:0'],
-            'close_case'          => ['nullable', 'boolean'],
-            'conformity_name'     => ['nullable', 'string', 'max:200'],
-            'conformity_date'     => ['nullable', 'date'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['nullable', 'array'],
+            'items.*.item_type' => ['required_with:items', 'string'],
+            'items.*.name' => ['required_with:items', 'string', 'max:255'],
+            'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],
+            'items.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'close_case' => ['nullable', 'boolean'],
+            'conformity_name' => ['nullable', 'string', 'max:200'],
+            'conformity_date' => ['nullable', 'date'],
             'next_maintenance_date' => ['nullable', 'date'],
-            'total_cost'          => ['nullable', 'numeric', 'min:0'],
+            'total_cost' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         if (! $request->boolean('close_case')) {
@@ -135,13 +136,13 @@ class TechnicianController extends Controller
         $this->technicianService->updateProgress($maintenanceCase, $data);
 
         foreach ($data['items'] ?? [] as $item) {
-            $dto = \App\DTOs\MaintenanceItem\CreateMaintenanceItemDTO::fromArray([
+            $dto = CreateMaintenanceItemDTO::fromArray([
                 'maintenance_case_id' => $maintenanceCase->id,
-                'item_type'           => $item['item_type'],
-                'name'                => $item['name'],
-                'description'         => $item['description'] ?? null,
-                'quantity'            => (int) $item['quantity'],
-                'unit_cost'           => (float) ($item['unit_cost'] ?? 0),
+                'item_type' => $item['item_type'],
+                'name' => $item['name'],
+                'description' => $item['description'] ?? null,
+                'quantity' => (int) $item['quantity'],
+                'unit_cost' => (float) ($item['unit_cost'] ?? 0),
             ]);
 
             $this->maintenanceCaseService->addItem($maintenanceCase, $dto);
@@ -151,12 +152,12 @@ class TechnicianController extends Controller
             $this->authorize('maintenance-case.close');
 
             $this->maintenanceCaseService->close($maintenanceCase, [
-                'actions_taken'         => $data['actions_taken'] ?? $maintenanceCase->actions_taken,
-                'conformity_name'       => $data['conformity_name'] ?? null,
-                'conformity_date'       => $data['conformity_date'] ?? null,
+                'actions_taken' => $data['actions_taken'] ?? $maintenanceCase->actions_taken,
+                'conformity_name' => $data['conformity_name'] ?? null,
+                'conformity_date' => $data['conformity_date'] ?? null,
                 'next_maintenance_date' => $data['next_maintenance_date'] ?? null,
-                'total_cost'            => $data['total_cost'] ?? null,
-                'notes'                 => $data['notes'] ?? null,
+                'total_cost' => $data['total_cost'] ?? null,
+                'notes' => $data['notes'] ?? null,
             ]);
         }
 
@@ -170,19 +171,19 @@ class TechnicianController extends Controller
         $this->authorize('maintenance-case.create');
 
         $data = $request->validate([
-            'asset_id'            => ['required', 'integer', 'exists:assets,id'],
-            'maintenance_type'    => ['required', 'string'],
-            'priority'            => ['required', 'string'],
+            'asset_id' => ['required', 'integer', 'exists:assets,id'],
+            'maintenance_type' => ['required', 'string'],
+            'priority' => ['required', 'string'],
             'problem_description' => ['required', 'string', 'max:2000'],
-            'diagnosis'           => ['nullable', 'string', 'max:2000'],
-            'actions_taken'       => ['nullable', 'string', 'max:2000'],
-            'notes'               => ['nullable', 'string', 'max:1000'],
-            'final_status'        => ['required', 'in:pendiente,en_progreso,completado'],
-            'items'               => ['nullable', 'array'],
-            'items.*.item_type'   => ['required_with:items', 'string'],
-            'items.*.name'        => ['required_with:items', 'string', 'max:255'],
-            'items.*.quantity'    => ['required_with:items', 'integer', 'min:1'],
-            'items.*.unit_cost'   => ['nullable', 'numeric', 'min:0'],
+            'diagnosis' => ['nullable', 'string', 'max:2000'],
+            'actions_taken' => ['nullable', 'string', 'max:2000'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'final_status' => ['required', 'in:pendiente,en_progreso,completado'],
+            'items' => ['nullable', 'array'],
+            'items.*.item_type' => ['required_with:items', 'string'],
+            'items.*.name' => ['required_with:items', 'string', 'max:255'],
+            'items.*.quantity' => ['required_with:items', 'integer', 'min:1'],
+            'items.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $case = $this->technicianService->registerAttention($data, auth()->user());
@@ -196,7 +197,7 @@ class TechnicianController extends Controller
     {
         $this->authorize('maintenance-case.edit');
 
-        $dto = \App\DTOs\MaintenanceItem\CreateMaintenanceItemDTO::fromArray(array_merge(
+        $dto = CreateMaintenanceItemDTO::fromArray(array_merge(
             $request->validated(),
             ['maintenance_case_id' => $maintenanceCase->id]
         ));
@@ -229,13 +230,13 @@ class TechnicianController extends Controller
         $template = MaintenanceTemplate::with('items')->findOrFail($request->integer('template_id'));
 
         foreach ($template->items as $templateItem) {
-            $dto = \App\DTOs\MaintenanceItem\CreateMaintenanceItemDTO::fromArray([
+            $dto = CreateMaintenanceItemDTO::fromArray([
                 'maintenance_case_id' => $maintenanceCase->id,
-                'item_type'           => $templateItem->item_type->value,
-                'name'                => $templateItem->name,
-                'description'         => $templateItem->description,
-                'quantity'            => (int) $templateItem->quantity,
-                'unit_cost'           => (float) $templateItem->unit_cost,
+                'item_type' => $templateItem->item_type->value,
+                'name' => $templateItem->name,
+                'description' => $templateItem->description,
+                'quantity' => (int) $templateItem->quantity,
+                'unit_cost' => (float) $templateItem->unit_cost,
             ]);
 
             $this->maintenanceCaseService->addItem($maintenanceCase, $dto);

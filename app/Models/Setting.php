@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\SettingType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Cache;
 
 class Setting extends Model
 {
@@ -19,7 +18,7 @@ class Setting extends Model
     ];
 
     protected $casts = [
-        'type'         => SettingType::class,
+        'type' => SettingType::class,
         'is_sensitive' => 'boolean',
     ];
 
@@ -30,11 +29,11 @@ class Setting extends Model
 
     public function getTypedValue(): mixed
     {
-        return match($this->type) {
+        return match ($this->type) {
             SettingType::INTEGER => (int) $this->value,
             SettingType::BOOLEAN => filter_var($this->value, FILTER_VALIDATE_BOOLEAN),
-            SettingType::JSON    => json_decode($this->value, true),
-            default              => $this->value,
+            SettingType::JSON => json_decode($this->value, true),
+            default => $this->value,
         };
     }
 

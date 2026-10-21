@@ -5,7 +5,6 @@ namespace App\Actions\MaintenanceCampaign;
 use App\DTOs\MaintenanceCampaign\CreateMaintenanceCampaignDTO;
 use App\Models\MaintenanceCampaign;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class CreateCampaignAction
 {
@@ -14,6 +13,7 @@ class CreateCampaignAction
         return DB::transaction(function () use ($dto) {
             $data = $dto->toArray();
             $data['code'] = $this->generateCode();
+
             return MaintenanceCampaign::create($data);
         });
     }
@@ -22,6 +22,7 @@ class CreateCampaignAction
     {
         $year = now()->format('Y');
         $last = MaintenanceCampaign::whereYear('created_at', $year)->count() + 1;
+
         return sprintf('CAMP-%s-%04d', $year, $last);
     }
 }

@@ -32,9 +32,9 @@ class LoginRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'username.required'    => 'El usuario es requerido.',
+            'username.required' => 'El usuario es requerido.',
             'password.required' => 'La contraseña es requerida.',
-            'password.min'      => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
         ];
     }
 }

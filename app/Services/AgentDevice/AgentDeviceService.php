@@ -11,10 +11,14 @@ use App\Enums\AgentSyncType;
 use App\Enums\AssetCondition;
 use App\Enums\AssetStatus;
 use App\Enums\AssetType;
+use App\Enums\CampaignAssetStatus;
+use App\Enums\CampaignStatus;
 use App\Exceptions\AgentDevice\AgentDeviceException;
 use App\Models\AgentDevice;
 use App\Models\AgentSync;
 use App\Models\Asset;
+use App\Models\CampaignAsset;
+use App\Models\MaintenanceCampaign;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 
@@ -74,6 +78,11 @@ class AgentDeviceService
             );
         }
 
+        $device->load('asset');
+        if ($device->asset) {
+            $this->checkAndAttendActiveCampaign($device->asset, $dto->agent_version, is_array($dto->health) ? $dto->health : null);
+        }
+
         $health = $dto->health;
         $hasHealthAlert = false;
         if (is_array($health)) {
@@ -126,6 +135,7 @@ class AgentDeviceService
 
             if ($device->asset) {
                 $this->updateAssetFromAgentData($device->asset, $newPayload, $device->last_health_json, $device);
+                $this->checkAndAttendActiveCampaign($device->asset, $device->agent_version ?? '1.0');
             }
 
             // Deduplicación: si el hash estructural es idéntico, no insertar nueva fila
@@ -555,5 +565,39 @@ class AgentDeviceService
         }
 
         return mb_substr(trim($value), 0, $limit);
+    }
+
+    /**
+     * Si el activo sincronizado forma parte de una campaña activa (en curso),
+     * registra automáticamente la atención preventiva con telemetría del agente.
+     */
+    public function checkAndAttendActiveCampaign(Asset $asset, string $agentVersion = '1.0', ?array $healthData = null): void
+    {
+        $activeCampaign = MaintenanceCampaign::where('status', CampaignStatus::EN_CURSO->value)
+            ->latest('start_date')
+            ->first();
+
+        if (! $activeCampaign) {
+            return;
+        }
+
+        $campaignAsset = CampaignAsset::where('campaign_id', $activeCampaign->id)
+            ->where('asset_id', $asset->id)
+            ->first();
+
+        if ($campaignAsset && $campaignAsset->status !== CampaignAssetStatus::ATENDIDO) {
+            $tasks = ['agente_sincronizacion_automatica', 'telemetria_hardware_recolectada'];
+            if ($healthData && strtoupper($healthData['overallStatus'] ?? '') === 'OK') {
+                $tasks[] = 'diagnostico_salud_optimo';
+            }
+
+            $campaignAsset->update([
+                'status' => CampaignAssetStatus::ATENDIDO,
+                'attended_type' => 'agente',
+                'attended_date' => now()->toDateString(),
+                'checklist_tasks' => $tasks,
+                'notes' => 'Atención preventiva registrada automáticamente por Agente SIGAT (v'.$agentVersion.').',
+            ]);
+        }
     }
 }

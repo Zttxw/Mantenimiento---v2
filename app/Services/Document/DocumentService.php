@@ -28,7 +28,7 @@ class DocumentService
 
     public function storeWithFile(array $data, UploadedFile $file): Document
     {
-        $path = $file->store('documents/' . date('Y/m'), 'local');
+        $path = $file->store('documents/'.date('Y/m'), 'local');
 
         $dto = CreateDocumentDTO::fromArray(array_merge($data, ['file_path' => $path]));
 

@@ -42,8 +42,8 @@ class AssetService
     public function delete(Asset $asset): void
     {
         if ($asset->maintenanceCases()
-                  ->whereNotIn('status', ['completado', 'cancelado'])
-                  ->exists()) {
+            ->whereNotIn('status', ['completado', 'cancelado'])
+            ->exists()) {
             throw AssetException::hasActiveMaintenanceCases($asset->name);
         }
 

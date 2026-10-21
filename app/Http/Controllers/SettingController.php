@@ -19,9 +19,9 @@ class SettingController extends Controller
         $settings = $this->settingService->getAll(request('group'));
 
         $groups = Setting::where('is_sensitive', false)
-                    ->select('group_name')
-                    ->distinct()
-                    ->pluck('group_name');
+            ->select('group_name')
+            ->distinct()
+            ->pluck('group_name');
 
         return view('settings.index', compact('settings', 'groups'));
     }

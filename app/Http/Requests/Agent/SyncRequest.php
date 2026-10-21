@@ -16,8 +16,8 @@ class SyncRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'sync_type'             => ['required', new Enum(AgentSyncType::class)],
-            'payload_json'          => ['nullable', 'array'],
+            'sync_type' => ['required', new Enum(AgentSyncType::class)],
+            'payload_json' => ['nullable', 'array'],
             'detected_changes_json' => ['nullable', 'array'],
         ];
     }

@@ -3,6 +3,7 @@
 namespace App\Exceptions\AgentDevice;
 
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class AgentDeviceException extends Exception
@@ -30,7 +31,7 @@ class AgentDeviceException extends Exception
     public static function unauthorized(): self
     {
         return new self(
-            "Token de agente inválido o dispositivo no autorizado.",
+            'Token de agente inválido o dispositivo no autorizado.',
             Response::HTTP_UNAUTHORIZED
         );
     }
@@ -50,7 +51,7 @@ class AgentDeviceException extends Exception
         );
     }
 
-    public function render(): \Illuminate\Http\JsonResponse
+    public function render(): JsonResponse
     {
         return response()->json([
             'message' => $this->getMessage(),

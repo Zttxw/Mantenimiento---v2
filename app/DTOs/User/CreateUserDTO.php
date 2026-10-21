@@ -1,4 +1,5 @@
 <?php
+
 namespace App\DTOs\User;
 
 readonly class CreateUserDTO
@@ -9,7 +10,7 @@ readonly class CreateUserDTO
         public string $email,
         public string $password,
         public ?string $role,
-        public bool   $is_active = true
+        public bool $is_active = true
     ) {}
 
     public static function fromArray(array $data): self
@@ -21,7 +22,7 @@ readonly class CreateUserDTO
             password    : $data['password'],
             role        : $data['role'],
             is_active   : $data['is_active'] ?? true,
-            
+
         );
     }
 

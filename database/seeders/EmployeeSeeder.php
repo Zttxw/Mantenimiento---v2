@@ -11,6 +11,7 @@ use RuntimeException;
 class EmployeeSeeder extends Seeder
 {
     private const SOURCE_FILE = 'database/seeders/data/sgd/empleados.json';
+
     private const DEPENDENCIAS_FILE = 'database/seeders/data/sgd/dependencias.json';
 
     public function run(): void
@@ -24,6 +25,7 @@ class EmployeeSeeder extends Seeder
         $rows = $payload['data'] ?? [];
         if (empty($rows)) {
             $this->command?->warn('empleados.json esta vacio.');
+
             return;
         }
 
@@ -52,24 +54,27 @@ class EmployeeSeeder extends Seeder
         foreach ($rows as $r) {
             $dni = trim((string) ($r['dni'] ?? ''));
             $nombres = trim((string) ($r['nombres'] ?? ''));
-            $apePat  = trim((string) ($r['apellido_paterno'] ?? ''));
-            $apeMat  = trim((string) ($r['apellido_materno'] ?? ''));
+            $apePat = trim((string) ($r['apellido_paterno'] ?? ''));
+            $apeMat = trim((string) ($r['apellido_materno'] ?? ''));
 
             if ($dni === '' || strlen($dni) !== 8 || ! ctype_digit($dni) || $dni === '00000000') {
                 $skipped++;
+
                 continue;
             }
             if ($nombres === '' || $apePat === '') {
                 $skipped++;
+
                 continue;
             }
             if (isset($seenDni[$dni])) {
                 $skipped++;
+
                 continue;
             }
             $seenDni[$dni] = true;
 
-            $r['nombres']          = $nombres;
+            $r['nombres'] = $nombres;
             $r['apellido_paterno'] = $apePat;
             $r['apellido_materno'] = $apeMat;
             $clean[] = $r;
@@ -89,6 +94,7 @@ class EmployeeSeeder extends Seeder
                 $map[$sgdCode] = $u;
             }
         }
+
         return $map;
     }
 
@@ -97,24 +103,24 @@ class EmployeeSeeder extends Seeder
         foreach ($rows as $r) {
             $unit = $unitsBySgd[$r['co_dependencia']] ?? null;
 
-            $name     = $this->titleCase($r['nombres']);
+            $name = $this->titleCase($r['nombres']);
             $lastName = $this->titleCase(trim($r['apellido_paterno'].' '.$r['apellido_materno']));
             $fullName = trim($lastName.', '.$name);
 
             Employee::updateOrCreate(
                 ['dni' => $r['dni']],
                 [
-                    'name'                   => $name,
-                    'last_name'              => $lastName,
-                    'full_name'              => $fullName,
-                    'email'                  => $r['email'] !== '' ? mb_strtolower($r['email']) : null,
-                    'phone'                  => null,
-                    'position'               => $r['cargo'] !== '' ? $this->titleCase($r['cargo']) : null,
+                    'name' => $name,
+                    'last_name' => $lastName,
+                    'full_name' => $fullName,
+                    'email' => $r['email'] !== '' ? mb_strtolower($r['email']) : null,
+                    'phone' => null,
+                    'position' => $r['cargo'] !== '' ? $this->titleCase($r['cargo']) : null,
                     'organizational_unit_id' => $unit?->id,
-                    'is_technician'          => false,
-                    'specialty'              => null,
-                    'level'                  => null,
-                    'is_active'              => (bool) ($r['is_active'] ?? 1),
+                    'is_technician' => false,
+                    'specialty' => null,
+                    'level' => null,
+                    'is_active' => (bool) ($r['is_active'] ?? 1),
                 ]
             );
         }
@@ -136,7 +142,7 @@ class EmployeeSeeder extends Seeder
                 continue;
             }
 
-            $jefeSgd    = $r['co_empleado_jefe'] ?? '';
+            $jefeSgd = $r['co_empleado_jefe'] ?? '';
             $titularSgd = $r['co_empleado_titular'] ?? '';
 
             $employeeId = $employeesBySgd[$jefeSgd]
@@ -172,6 +178,7 @@ class EmployeeSeeder extends Seeder
                 $idByCo[$co] = $idByDni[$dni];
             }
         }
+
         return $idByCo;
     }
 

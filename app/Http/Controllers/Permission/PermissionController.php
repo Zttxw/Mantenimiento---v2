@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Permission;
 
-use App\Http\Controllers\Controller;
 use App\DTOs\Permission\PermissionDTO;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Permission\StorePermissionRequest;
 use App\Http\Requests\Permission\UpdatePermissionRequest;
 use App\Services\Permission\PermissionService;

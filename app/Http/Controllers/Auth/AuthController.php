@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
 use App\DTOs\Auth\LoginDTO;
-use App\Services\Auth\AuthService;
-use App\Http\Requests\Auth\LoginRequest;
-use App\Exceptions\Auth\UserInactiveException;
 use App\Exceptions\Auth\InvalidCredentialsException;
-use App\Models\User;
+use App\Exceptions\Auth\UserInactiveException;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Services\Auth\AuthService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -46,6 +45,7 @@ class AuthController extends Controller
     public function logout(): RedirectResponse
     {
         $this->authService->logout();
+
         return redirect()->route('login');
     }
 }

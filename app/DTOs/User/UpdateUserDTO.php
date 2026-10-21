@@ -1,4 +1,5 @@
 <?php
+
 namespace App\DTOs\User;
 
 readonly class UpdateUserDTO
@@ -9,8 +10,9 @@ readonly class UpdateUserDTO
         public string $email,
         public ?string $password,
         public string $role,
-        public bool   $is_active = true
+        public bool $is_active = true
     ) {}
+
     public static function fromArray(array $data): self
     {
         return new self(

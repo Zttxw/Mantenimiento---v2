@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            //$table->foreignId('role_id')->constrained();
-            //$table->unsignedBigInteger('employee_id')->nullable();
+            // $table->foreignId('role_id')->constrained();
+            // $table->unsignedBigInteger('employee_id')->nullable();
             $table->string('username')->unique();
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();

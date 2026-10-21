@@ -19,14 +19,14 @@ class UpdateOrganizationalUnitRequest extends FormRequest
         $unit = $this->route('organizational_unit');
 
         return [
-            'parent_id'              => ['nullable', 'integer', 'exists:organizational_units,id'],
-            'type'                   => ['required', new Enum(OrgUnitType::class)],
-            'code'                   => ['required', 'string', 'max:20', Rule::unique('organizational_units', 'code')->ignore($unit)],
-            'name'                   => ['required', 'string', 'max:200'],
+            'parent_id' => ['nullable', 'integer', 'exists:organizational_units,id'],
+            'type' => ['required', new Enum(OrgUnitType::class)],
+            'code' => ['required', 'string', 'max:20', Rule::unique('organizational_units', 'code')->ignore($unit)],
+            'name' => ['required', 'string', 'max:200'],
             'responsible_employee_id' => ['nullable', 'integer', 'exists:employees,id'],
-            'meta_json'              => ['nullable', 'array'],
-            'is_active'              => ['boolean'],
-            'sort_order'             => ['nullable', 'integer', 'min:0'],
+            'meta_json' => ['nullable', 'array'],
+            'is_active' => ['boolean'],
+            'sort_order' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

@@ -28,7 +28,7 @@ class OrganizationalUnitController extends Controller
     {
         $this->authorize('org-unit.create');
 
-        $parents   = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
+        $parents = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
         $employees = Employee::where('is_active', true)->orderBy('full_name')->get();
 
         return view('organizational-units.create', compact('parents', 'employees'));
@@ -57,9 +57,9 @@ class OrganizationalUnitController extends Controller
     {
         $this->authorize('org-unit.edit');
 
-        $parents   = OrganizationalUnit::where('is_active', true)
-                        ->where('id', '!=', $organizationalUnit->id)
-                        ->orderBy('name')->get();
+        $parents = OrganizationalUnit::where('is_active', true)
+            ->where('id', '!=', $organizationalUnit->id)
+            ->orderBy('name')->get();
         $employees = Employee::where('is_active', true)->orderBy('full_name')->get();
 
         return view('organizational-units.edit', compact('organizationalUnit', 'parents', 'employees'));

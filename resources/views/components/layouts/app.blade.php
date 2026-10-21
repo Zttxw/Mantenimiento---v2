@@ -29,7 +29,7 @@
         @include('components.layouts.partials.sidebar')
 
         {{-- Main Content Area --}}
-        <div class="ml-[72px] transition-all duration-300">
+        <div class="ml-64 transition-all duration-300">
             <div class="max-w-[1400px] mx-auto px-6 py-4">
 
                 {{-- Topbar --}}

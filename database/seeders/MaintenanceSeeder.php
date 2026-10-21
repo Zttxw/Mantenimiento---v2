@@ -65,22 +65,22 @@ class MaintenanceSeeder extends Seeder
             [
                 'code' => 'MC-2026-002',
                 'asset_id' => $assets['EQ-TES-002']->id,
-                'campaign_id' => $campaign->id,
+                'campaign_id' => null,
                 'reported_by_employee_id' => $employees['70456789']->id,
                 'assigned_technician_id' => $employees['70345678']->id,
-                'maintenance_type' => MaintenanceType::PREVENTIVO,
+                'maintenance_type' => MaintenanceType::CORRECTIVO,
                 'priority' => MaintenancePriority::MEDIA,
                 'status' => MaintenanceCaseStatus::COMPLETADO,
-                'problem_description' => 'Mantenimiento preventivo programado de estacion de trabajo.',
-                'diagnosis' => 'Equipo operativo, requiere limpieza y actualizacion.',
-                'actions_taken' => 'Limpieza interna, cambio de pasta termica y actualizacion de sistema.',
+                'problem_description' => 'Solicitud de asistencia: Reinstalación de certificado digital y limpieza de equipo.',
+                'diagnosis' => 'Certificado vencido y acumulación de polvo.',
+                'actions_taken' => 'Instalación de nuevo certificado digital, limpieza física y verificación de operatividad.',
                 'started_at' => now()->subDays(10),
                 'finished_at' => now()->subDays(9),
                 'next_maintenance_date' => now()->addMonths(6)->toDateString(),
                 'conformity_name' => 'Rosa Salazar Huaman',
                 'conformity_date' => now()->subDays(9),
                 'total_cost' => 120.00,
-                'notes' => 'Conformidad firmada.',
+                'notes' => 'Conformidad firmada en oficina.',
                 'created_by' => $createdBy,
             ],
             [
@@ -127,7 +127,7 @@ class MaintenanceSeeder extends Seeder
         }
 
         $campaignAssets = [
-            ['campaign_id' => $campaign->id, 'asset_id' => $assets['EQ-TES-002']->id, 'assigned_technician_id' => $employees['70345678']->id, 'scheduled_date' => now()->subDays(10)->toDateString(), 'attended_date' => now()->subDays(9)->toDateString(), 'status' => CampaignAssetStatus::ATENDIDO, 'maintenance_case_id' => $createdCases['MC-2026-002']->id, 'notes' => 'Actividad completada.'],
+            ['campaign_id' => $campaign->id, 'asset_id' => $assets['EQ-TES-002']->id, 'assigned_technician_id' => $employees['70345678']->id, 'scheduled_date' => now()->subDays(10)->toDateString(), 'attended_date' => now()->subDays(9)->toDateString(), 'status' => CampaignAssetStatus::ATENDIDO, 'attended_type' => 'manual', 'checklist_tasks' => ['sopleteado_limpieza', 'pasta_termica'], 'maintenance_case_id' => null, 'notes' => 'Mantenimiento preventivo en oficina completado.'],
             ['campaign_id' => $campaign->id, 'asset_id' => $assets['EQ-OTI-001']->id, 'assigned_technician_id' => $employees['70234567']->id, 'scheduled_date' => now()->addDays(3)->toDateString(), 'attended_date' => null, 'status' => CampaignAssetStatus::PROGRAMADO, 'maintenance_case_id' => null, 'notes' => 'Programado para revision de bateria.'],
             ['campaign_id' => $campaign->id, 'asset_id' => $assets['EQ-ADM-003']->id, 'assigned_technician_id' => $employees['70345678']->id, 'scheduled_date' => now()->addDays(5)->toDateString(), 'attended_date' => null, 'status' => CampaignAssetStatus::PENDIENTE, 'maintenance_case_id' => null, 'notes' => 'Pendiente confirmacion con el area usuaria.'],
         ];

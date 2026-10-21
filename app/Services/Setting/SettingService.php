@@ -19,6 +19,7 @@ class SettingService
     public function updateValue(Setting $setting, string $value): Setting
     {
         $setting->update(['value' => $value]);
+
         return $setting->fresh();
     }
 

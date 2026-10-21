@@ -6,7 +6,6 @@ use App\Enums\DocumentType;
 use App\Http\Requests\Document\StoreDocumentRequest;
 use App\Models\Document;
 use App\Services\Document\DocumentService;
-use Illuminate\Http\Request;
 
 class DocumentController extends Controller
 {
@@ -42,7 +41,7 @@ class DocumentController extends Controller
     {
         $this->authorize('document.view');
 
-        return response()->download(storage_path('app/' . $document->file_path), $document->title);
+        return response()->download(storage_path('app/'.$document->file_path), $document->title);
     }
 
     public function destroy(Document $document)

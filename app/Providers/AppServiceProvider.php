@@ -14,9 +14,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // El rol admin tiene acceso total sin necesitar cada permiso asignado
+        // El Coordinador OTI / Superadmin tiene acceso total
         Gate::before(function ($user, string $ability) {
-            if ($user->hasRole('admin')) {
+            if ($user->hasRole('coordinador_oti') || $user->hasRole('admin')) {
                 return true;
             }
         });

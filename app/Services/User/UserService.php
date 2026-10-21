@@ -21,8 +21,7 @@ class UserService
         return User::with(['roles', 'employee'])
             ->search($filters['search'] ?? null)
             ->byRole($filters['role'] ?? null)
-            ->when(isset($filters['status']), fn ($q) =>
-                $filters['status'] === 'active'
+            ->when(isset($filters['status']), fn ($q) => $filters['status'] === 'active'
                     ? $q->active()
                     : $q->inactive()
             )
@@ -63,9 +62,10 @@ class UserService
         );
 
         abort_if(
-            $user->hasRole('admin') && User::role('admin')->count() === 1,
+            ($user->hasRole('coordinador_oti') && User::role('coordinador_oti')->count() === 1) ||
+            ($user->hasRole('admin') && User::role('admin')->count() === 1),
             403,
-            'Debe existir al menos un administrador'
+            'Debe existir al menos un coordinador/administrador del sistema'
         );
 
         $user->delete();

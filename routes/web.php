@@ -35,8 +35,8 @@ Route::middleware(['auth', 'user.active'])->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // ── Administración de roles y permisos (solo admin) ──────────────────────
-    Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
+    // ── Administración de roles y permisos (solo coordinador / superadmin) ──
+    Route::middleware('role:coordinador_oti|admin')->prefix('admin')->name('admin.')->group(function () {
         Route::resource('roles', RoleController::class)->except('show');
         Route::resource('permissions', PermissionController::class)->except('show');
     });
@@ -62,7 +62,7 @@ Route::middleware(['auth', 'user.active'])->group(function () {
     Route::middleware('permission:asset.view')->group(function () {
         Route::get('assets/pc-monitor', [AssetController::class, 'pcMonitor'])->name('assets.pc-monitor');
         Route::resource('assets', AssetController::class);
-        Route::get('assets/{asset}/generate-ficha',     [AssetController::class, 'generateFicha'])->name('assets.generate-ficha');
+        Route::get('assets/{asset}/generate-ficha', [AssetController::class, 'generateFicha'])->name('assets.generate-ficha');
         Route::get('assets/{asset}/generate-historial', [AssetController::class, 'generateHistorial'])->name('assets.generate-historial');
     });
 
@@ -77,7 +77,9 @@ Route::middleware(['auth', 'user.active'])->group(function () {
         Route::post('campaigns/{campaign}/assets', [MaintenanceCampaignController::class, 'addAsset'])->name('campaigns.assets.add');
         Route::delete('campaigns/{campaign}/assets/{asset}', [MaintenanceCampaignController::class, 'removeAsset'])->name('campaigns.assets.remove');
         Route::post('campaigns/{campaign}/assets/bulk-unit', [MaintenanceCampaignController::class, 'bulkAddByUnit'])->name('campaigns.assets.bulk-unit');
-        Route::post('campaigns/{campaign}/cases/bulk-create', [MaintenanceCampaignController::class, 'bulkCreateCases'])->name('campaigns.cases.bulk-create');
+        Route::post('campaigns/{campaign}/assets/{campaignAsset}/attend', [MaintenanceCampaignController::class, 'attendAsset'])->name('campaigns.assets.attend');
+        Route::post('campaigns/{campaign}/assets/quick-register', [MaintenanceCampaignController::class, 'quickRegisterAsset'])->name('campaigns.assets.quick-register');
+        Route::patch('campaigns/{campaign}/status', [MaintenanceCampaignController::class, 'updateStatus'])->name('campaigns.status');
         Route::post('campaigns/{campaign}/generate-acta', [MaintenanceCampaignController::class, 'generateActa'])->name('campaigns.generate-acta');
     });
 
@@ -121,14 +123,14 @@ Route::middleware(['auth', 'user.active'])->group(function () {
 
     // ── Panel técnico ──────────────────────────────────────────────────────────
     Route::prefix('tecnico')->name('tecnico.')->group(function () {
-        Route::get('/',        [TechnicianController::class, 'dashboard'])->name('dashboard');
-        Route::get('/cola',    [TechnicianController::class, 'workQueue'])->name('work-queue');
+        Route::get('/', [TechnicianController::class, 'dashboard'])->name('dashboard');
+        Route::get('/cola', [TechnicianController::class, 'workQueue'])->name('work-queue');
         Route::get('/atender', [TechnicianController::class, 'attendAsset'])->name('attend-asset');
         Route::post('/atender', [TechnicianController::class, 'storeAttention'])->name('attend-asset.store');
 
         Route::prefix('casos')->name('cases.')->group(function () {
             Route::get('/{maintenanceCase}/flujo', [TechnicianController::class, 'caseWorkflow'])->name('workflow');
-            Route::get('/{maintenanceCase}',          [TechnicianController::class, 'caseDetail'])->name('show');
+            Route::get('/{maintenanceCase}', [TechnicianController::class, 'caseDetail'])->name('show');
             Route::patch('/{maintenanceCase}/progreso', [TechnicianController::class, 'updateProgress'])->name('progress');
             Route::post('/{maintenanceCase}/items', [TechnicianController::class, 'addItem'])->name('items.add');
             Route::delete('/{maintenanceCase}/items/{item}', [TechnicianController::class, 'removeItem'])->name('items.remove');

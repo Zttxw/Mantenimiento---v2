@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('type', 30);            // Enum: sede, gerencia, subgerencia, etc.
             $table->string('code', 30)->unique();
             $table->string('name');
-            //$table->unsignedBigInteger('responsible_employee_id')->nullable();
+            // $table->unsignedBigInteger('responsible_employee_id')->nullable();
             $table->jsonb('meta_json')->nullable();
             $table->boolean('is_active')->default(true);
             $table->unsignedSmallInteger('sort_order')->default(0);

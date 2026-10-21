@@ -18,6 +18,7 @@ class UpdateCaseAction
 
         return DB::transaction(function () use ($case, $dto) {
             $case->update($dto->toArray());
+
             return $case->fresh();
         });
     }

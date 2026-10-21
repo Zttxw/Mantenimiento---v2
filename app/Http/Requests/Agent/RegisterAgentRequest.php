@@ -15,13 +15,13 @@ class RegisterAgentRequest extends FormRequest
     {
         return [
             'asset_internal_code' => ['nullable', 'string'],
-            'hostname'            => ['required', 'string', 'max:200'],
-            'serial_number'       => ['nullable', 'string', 'max:100'],
-            'device_model'        => ['nullable', 'string', 'max:100'],
-            'operating_system'    => ['nullable', 'string', 'max:150'],
-            'agent_version'       => ['required', 'string', 'max:20'],
-            'last_ip'             => ['nullable', 'ip'],
-            'last_snapshot_json'  => ['nullable', 'array'],
+            'hostname' => ['required', 'string', 'max:200'],
+            'serial_number' => ['nullable', 'string', 'max:100'],
+            'device_model' => ['nullable', 'string', 'max:100'],
+            'operating_system' => ['nullable', 'string', 'max:150'],
+            'agent_version' => ['required', 'string', 'max:20'],
+            'last_ip' => ['nullable', 'ip'],
+            'last_snapshot_json' => ['nullable', 'array'],
         ];
     }
 

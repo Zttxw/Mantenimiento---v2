@@ -18,14 +18,11 @@ class EmployeeService
     {
         return Employee::with('organizationalUnit')
             ->search($filters['search'] ?? null)
-            ->when(isset($filters['is_technician']), fn ($q) =>
-                $q->where('is_technician', (bool) $filters['is_technician'])
+            ->when(isset($filters['is_technician']), fn ($q) => $q->where('is_technician', (bool) $filters['is_technician'])
             )
-            ->when(isset($filters['unit_id']), fn ($q) =>
-                $q->where('organizational_unit_id', $filters['unit_id'])
+            ->when(isset($filters['unit_id']), fn ($q) => $q->where('organizational_unit_id', $filters['unit_id'])
             )
-            ->when(isset($filters['status']), fn ($q) =>
-                $filters['status'] === 'active' ? $q->active() : $q->where('is_active', false)
+            ->when(isset($filters['status']), fn ($q) => $filters['status'] === 'active' ? $q->active() : $q->where('is_active', false)
             )
             ->latest()
             ->paginate(15)
@@ -50,24 +47,24 @@ class EmployeeService
 
     private function createTechnicianUser(Employee $employee, string $dni): User
     {
-        $firstName   = Str::ascii(strtolower(explode(' ', trim($employee->name))[0]));
+        $firstName = Str::ascii(strtolower(explode(' ', trim($employee->name))[0]));
         $firstSurname = Str::ascii(strtolower(explode(' ', trim($employee->last_name))[0]));
 
         // Primer letra del nombre + primer apellido (solo letras)
-        $base     = preg_replace('/[^a-z]/', '', substr($firstName, 0, 1) . $firstSurname);
+        $base = preg_replace('/[^a-z]/', '', substr($firstName, 0, 1).$firstSurname);
         $username = $base;
-        $counter  = 1;
+        $counter = 1;
 
         while (User::where('username', $username)->exists()) {
-            $username = $base . $counter++;
+            $username = $base.$counter++;
         }
 
         $user = User::create([
             'employee_id' => $employee->id,
-            'username'    => $username,
-            'email'       => $employee->email,
-            'password'    => $dni,
-            'is_active'   => true,
+            'username' => $username,
+            'email' => $employee->email,
+            'password' => $dni,
+            'is_active' => true,
         ]);
 
         $user->assignRole(RoleEnum::TECNICO->value);
@@ -78,12 +75,14 @@ class EmployeeService
     public function update(Employee $employee, UpdateEmployeeDTO $dto): Employee
     {
         $employee->update($dto->toArray());
+
         return $employee->fresh();
     }
 
     public function toggleActive(Employee $employee): Employee
     {
         $employee->update(['is_active' => ! $employee->is_active]);
+
         return $employee;
     }
 

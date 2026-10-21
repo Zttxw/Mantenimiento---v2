@@ -27,7 +27,7 @@ class Employee extends Model
 
     protected $casts = [
         'is_technician' => 'boolean',
-        'is_active'     => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function organizationalUnit(): BelongsTo
@@ -78,9 +78,9 @@ class Employee extends Model
 
         return $query->where(function (Builder $q) use ($term) {
             $q->where('full_name', 'like', "%{$term}%")
-              ->orWhere('dni', 'like', "%{$term}%")
-              ->orWhere('email', 'like', "%{$term}%")
-              ->orWhere('position', 'like', "%{$term}%");
+                ->orWhere('dni', 'like', "%{$term}%")
+                ->orWhere('email', 'like', "%{$term}%")
+                ->orWhere('position', 'like', "%{$term}%");
         });
     }
 }

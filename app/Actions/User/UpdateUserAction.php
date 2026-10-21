@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Actions\User;
 
 use App\DTOs\User\UpdateUserDTO;
@@ -27,4 +28,3 @@ class UpdateUserAction
         });
     }
 }
-

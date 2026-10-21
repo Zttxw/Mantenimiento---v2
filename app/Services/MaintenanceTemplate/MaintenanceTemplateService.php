@@ -4,6 +4,7 @@ namespace App\Services\MaintenanceTemplate;
 
 use App\Models\MaintenanceTemplate;
 use App\Models\MaintenanceTemplateItem;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class MaintenanceTemplateService
@@ -18,7 +19,7 @@ class MaintenanceTemplateService
             ->withQueryString();
     }
 
-    public function getActiveByType(?string $type): \Illuminate\Database\Eloquent\Collection
+    public function getActiveByType(?string $type): Collection
     {
         return MaintenanceTemplate::active()
             ->byType($type)
@@ -65,12 +66,12 @@ class MaintenanceTemplateService
             }
             MaintenanceTemplateItem::create([
                 'maintenance_template_id' => $template->id,
-                'item_type'               => $item['item_type'],
-                'name'                    => $item['name'],
-                'description'             => $item['description'] ?? null,
-                'quantity'                => $item['quantity'] ?? 1,
-                'unit_cost'               => $item['unit_cost'] ?? 0,
-                'sort_order'              => $order,
+                'item_type' => $item['item_type'],
+                'name' => $item['name'],
+                'description' => $item['description'] ?? null,
+                'quantity' => $item['quantity'] ?? 1,
+                'unit_cost' => $item['unit_cost'] ?? 0,
+                'sort_order' => $order,
             ]);
         }
     }

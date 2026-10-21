@@ -31,8 +31,8 @@ class AssetController extends Controller
             'search', 'type', 'status', 'unit_id',
         ]));
 
-        $units  = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
-        $types  = AssetType::cases();
+        $units = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
+        $types = AssetType::cases();
         $statuses = AssetStatus::cases();
 
         return view('assets.index', compact('assets', 'units', 'types', 'statuses'));
@@ -42,10 +42,10 @@ class AssetController extends Controller
     {
         $this->authorize('asset.create');
 
-        $units      = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
-        $employees  = Employee::where('is_active', true)->orderBy('full_name')->get();
-        $types      = AssetType::cases();
-        $statuses   = AssetStatus::cases();
+        $units = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
+        $employees = Employee::where('is_active', true)->orderBy('full_name')->get();
+        $types = AssetType::cases();
+        $statuses = AssetStatus::cases();
         $conditions = AssetCondition::cases();
 
         return view('assets.create', compact('units', 'employees', 'types', 'statuses', 'conditions'));
@@ -74,10 +74,10 @@ class AssetController extends Controller
     {
         $this->authorize('asset.edit');
 
-        $units      = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
-        $employees  = Employee::where('is_active', true)->orderBy('full_name')->get();
-        $types      = AssetType::cases();
-        $statuses   = AssetStatus::cases();
+        $units = OrganizationalUnit::where('is_active', true)->orderBy('name')->get();
+        $employees = Employee::where('is_active', true)->orderBy('full_name')->get();
+        $types = AssetType::cases();
+        $statuses = AssetStatus::cases();
         $conditions = AssetCondition::cases();
 
         return view('assets.edit', compact('asset', 'units', 'employees', 'types', 'statuses', 'conditions'));
@@ -100,7 +100,7 @@ class AssetController extends Controller
 
         $document = $this->docGenerator->generateFichaTecnica($asset, auth()->user());
 
-        $filename = str_replace(['/', '\\', ':'], '-', $document->title) . '.pdf';
+        $filename = str_replace(['/', '\\', ':'], '-', $document->title).'.pdf';
 
         return Storage::disk('local')->download($document->file_path, $filename);
     }
@@ -111,7 +111,7 @@ class AssetController extends Controller
 
         $document = $this->docGenerator->generateHistorialMantenimiento($asset, auth()->user());
 
-        $filename = str_replace(['/', '\\', ':'], '-', $document->title) . '.pdf';
+        $filename = str_replace(['/', '\\', ':'], '-', $document->title).'.pdf';
 
         return Storage::disk('local')->download($document->file_path, $filename);
     }
@@ -121,9 +121,9 @@ class AssetController extends Controller
         $this->authorize('asset.view');
 
         $assets = Asset::whereIn('asset_type', [
-                AssetType::COMPUTADORA->value,
-                AssetType::LAPTOP->value,
-            ])
+            AssetType::COMPUTADORA->value,
+            AssetType::LAPTOP->value,
+        ])
             ->with(['agentDevice', 'organizationalUnit', 'responsible'])
             ->search(request('search'))
             ->byUnit(request()->integer('unit_id') ?: null)

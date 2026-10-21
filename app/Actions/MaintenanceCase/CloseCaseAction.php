@@ -17,14 +17,14 @@ class CloseCaseAction
 
         return DB::transaction(function () use ($case, $data) {
             $case->update([
-                'status'               => MaintenanceCaseStatus::COMPLETADO->value,
-                'finished_at'          => $data['finished_at'] ?? now(),
-                'actions_taken'        => $data['actions_taken'] ?? $case->actions_taken,
-                'conformity_name'      => $data['conformity_name'] ?? null,
-                'conformity_date'      => $data['conformity_date'] ?? now()->toDateString(),
+                'status' => MaintenanceCaseStatus::COMPLETADO->value,
+                'finished_at' => $data['finished_at'] ?? now(),
+                'actions_taken' => $data['actions_taken'] ?? $case->actions_taken,
+                'conformity_name' => $data['conformity_name'] ?? null,
+                'conformity_date' => $data['conformity_date'] ?? now()->toDateString(),
                 'next_maintenance_date' => $data['next_maintenance_date'] ?? null,
-                'total_cost'           => $data['total_cost'] ?? $case->items()->sum('total_cost'),
-                'notes'                => $data['notes'] ?? $case->notes,
+                'total_cost' => $data['total_cost'] ?? $case->items()->sum('total_cost'),
+                'notes' => $data['notes'] ?? $case->notes,
             ]);
 
             return $case->fresh();

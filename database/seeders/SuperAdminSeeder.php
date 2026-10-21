@@ -12,7 +12,7 @@ class SuperAdminSeeder extends Seeder
     public function run(): void
     {
         $role = Role::firstOrCreate([
-            'name' => RoleEnum::ADMIN->value,
+            'name' => RoleEnum::COORDINADOR_OTI->value,
             'guard_name' => 'web',
         ]);
 

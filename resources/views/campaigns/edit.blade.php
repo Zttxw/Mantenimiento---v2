@@ -1,242 +1,189 @@
 <x-layouts.app title="Editar Campaña" moduleLabel="Mantenimiento" pageTitle="Editar Campaña">
 
-    <x-ui.page-header
-        :title="'Editar: ' . $campaign->name"
-        :description="$campaign->code"
-    >
-        <x-slot:actions>
-            <x-ui.button variant="secondary" size="sm" href="{{ route('campaigns.show', $campaign) }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
-                Volver
-            </x-ui.button>
-        </x-slot:actions>
-    </x-ui.page-header>
+    {{-- Encabezado --}}
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-zinc-200/80 mb-6 max-w-4xl">
+        <div>
+            <nav class="flex items-center gap-1.5 text-xs text-zinc-400 mb-1.5">
+                <a href="{{ route('campaigns.index') }}" class="hover:text-zinc-700 transition-colors flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span>Campañas</span>
+                </a>
+                <span>/</span>
+                <a href="{{ route('campaigns.show', $campaign) }}" class="font-mono text-zinc-600 hover:text-zinc-900 transition-colors">
+                    {{ $campaign->code }}
+                </a>
+                <span>/</span>
+                <span class="text-zinc-600 font-medium">Editar</span>
+            </nav>
+            <h1 class="text-2xl font-bold tracking-tight text-zinc-900">Editar Parámetros de Campaña</h1>
+            <p class="text-xs text-zinc-500 mt-1">Modifica los datos generales, objetivos y cronograma institucional.</p>
+        </div>
 
-    <div class="space-y-6">
+        <a href="{{ route('campaigns.show', $campaign) }}"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors">
+            Volver a la Campaña
+        </a>
+    </div>
 
-        {{-- Formulario principal --}}
-        <form method="POST" action="{{ route('campaigns.update', $campaign) }}" class="max-w-2xl">
+    <div class="max-w-4xl space-y-6">
+        {{-- Formulario Principal --}}
+        <form method="POST" action="{{ route('campaigns.update', $campaign) }}" class="space-y-5">
             @csrf @method('PUT')
 
-            <div class="space-y-4">
-                <x-ui.card>
-                    <x-slot:header>
-                        <h3 class="text-sm font-semibold text-slate-900">Datos de la campaña</h3>
-                    </x-slot:header>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <div class="sm:col-span-2">
-                            <x-ui.input name="name" label="Nombre de la campaña" :value="old('name', $campaign->name)" />
-                        </div>
-                        <div class="sm:col-span-2">
-                            <x-ui.textarea name="objective" label="Objetivo" :value="old('objective', $campaign->objective)" rows="2" />
-                        </div>
-                        <x-ui.select
-                            name="coordinator_id"
-                            label="Coordinador"
-                            :value="old('coordinator_id', $campaign->coordinator_id)"
-                            :options="$coordinators->pluck('full_name', 'id')->toArray()"
-                        />
-                        <x-ui.select
-                            name="status"
-                            label="Estado"
-                            :value="old('status', $campaign->status->value)"
-                            :options="collect($statuses)->mapWithKeys(fn($s) => [$s->value => $s->label()])->toArray()"
-                        />
-                        <x-ui.input name="start_date" type="date" label="Fecha de inicio" :value="old('start_date', $campaign->start_date?->format('Y-m-d'))" />
-                        <x-ui.input name="end_date" type="date" label="Fecha de fin estimada" :value="old('end_date', $campaign->end_date?->format('Y-m-d'))" />
-                    </div>
-                </x-ui.card>
-
-                <div class="flex gap-3">
-                    <x-ui.button type="submit">Guardar cambios</x-ui.button>
-                    <x-ui.button variant="secondary" href="{{ route('campaigns.show', $campaign) }}">Cancelar</x-ui.button>
+            <div class="bg-white rounded-2xl border border-zinc-200/90 p-6 shadow-xs space-y-5 text-xs">
+                <div>
+                    <label class="block font-semibold text-zinc-800 mb-1.5">Nombre de la Campaña *</label>
+                    <input type="text" name="name" required value="{{ old('name', $campaign->name) }}"
+                           class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-medium">
+                    @error('name') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
                 </div>
+
+                <div>
+                    <label class="block font-semibold text-zinc-800 mb-1.5">Objetivo Institucional</label>
+                    <textarea name="objective" rows="3"
+                              class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">{{ old('objective', $campaign->objective) }}</textarea>
+                    @error('objective') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-zinc-800 mb-1.5">Coordinador Responsable</label>
+                        <select name="coordinator_id"
+                                class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                            <option value="">Seleccionar coordinador...</option>
+                            @foreach ($coordinators as $coord)
+                                <option value="{{ $coord->id }}" {{ old('coordinator_id', $campaign->coordinator_id) == $coord->id ? 'selected' : '' }}>
+                                    {{ $coord->full_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('coordinator_id') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-zinc-800 mb-1.5">Estado</label>
+                        <select name="status"
+                                class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                            @foreach ($statuses as $status)
+                                <option value="{{ $status->value }}" {{ old('status', $campaign->status->value) === $status->value ? 'selected' : '' }}>
+                                    {{ $status->label() }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('status') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-semibold text-zinc-800 mb-1.5">Fecha de Inicio</label>
+                        <input type="date" name="start_date" value="{{ old('start_date', $campaign->start_date?->format('Y-m-d')) }}"
+                               class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-mono">
+                        @error('start_date') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block font-semibold text-zinc-800 mb-1.5">Fecha de Fin Estimada</label>
+                        <input type="date" name="end_date" value="{{ old('end_date', $campaign->end_date?->format('Y-m-d')) }}"
+                               class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-mono">
+                        @error('end_date') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button type="submit"
+                        class="px-5 py-2 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800 transition-colors shadow-sm cursor-pointer">
+                    Guardar Cambios
+                </button>
+                <a href="{{ route('campaigns.show', $campaign) }}"
+                   class="px-4 py-2 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-xs font-medium transition-colors">
+                    Cancelar
+                </a>
             </div>
         </form>
 
-        {{-- Sección de asignación masiva --}}
+        {{-- Asignación de Activos --}}
         @can('campaign.edit')
         @if (!in_array($campaign->status->value, ['completada', 'cancelada']))
-        <div>
-            <h3 class="text-sm font-semibold text-slate-700 mb-3">Asignación masiva de activos</h3>
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="pt-6 border-t border-zinc-200/80">
+            <h2 class="text-sm font-bold text-zinc-900 mb-1">Incorporación de Activos al Cronograma</h2>
+            <p class="text-xs text-zinc-500 mb-4">Agrega equipos individuales del inventario o grupos completos por dependencia.</p>
 
-                {{-- Agregar activo individual --}}
-                <x-ui.card>
-                    <x-slot:header>
-                        <h3 class="text-sm font-semibold text-slate-900">Agregar activo</h3>
-                    </x-slot:header>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {{-- Agregar Activo Individual --}}
+                <div class="bg-white rounded-xl border border-zinc-200/90 p-5 shadow-xs text-xs space-y-3">
+                    <h3 class="font-bold text-zinc-900 text-xs">Agregar Activo Individual</h3>
+
                     <form method="POST" action="{{ route('campaigns.assets.add', $campaign) }}" class="space-y-3">
                         @csrf
-                        <x-ui.select
-                            name="asset_id"
-                            label="Activo"
-                            :value="old('asset_id')"
-                            :options="$availableAssets->pluck('name', 'id')->toArray()"
-                            placeholder="Seleccionar activo..."
-                        />
-                        <x-ui.select
-                            name="assigned_technician_id"
-                            label="Técnico"
-                            :value="old('assigned_technician_id')"
-                            :options="$technicians->pluck('full_name', 'id')->toArray()"
-                            placeholder="Sin técnico"
-                        />
-                        <x-ui.input name="scheduled_date" type="date" label="Fecha programada" :value="old('scheduled_date')" />
-                        <x-ui.button type="submit" class="w-full justify-center" size="sm">Agregar activo</x-ui.button>
-                    </form>
-                </x-ui.card>
-
-                {{-- Bulk: agregar por unidad --}}
-                <x-ui.card>
-                    <x-slot:header>
                         <div>
-                            <h3 class="text-sm font-semibold text-slate-900">Agregar por unidad</h3>
-                            <p class="text-xs text-slate-400 mt-0.5">Todos los activos de una unidad a un técnico</p>
+                            <label class="block font-medium text-zinc-700 mb-1">Activo</label>
+                            <select name="asset_id" required
+                                    class="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                                <option value="">Seleccionar activo...</option>
+                                @foreach ($availableAssets as $avAsset)
+                                    <option value="{{ $avAsset->id }}">{{ $avAsset->name }} ({{ $avAsset->internal_code }})</option>
+                                @endforeach
+                            </select>
                         </div>
-                    </x-slot:header>
+
+                        <div>
+                            <label class="block font-medium text-zinc-700 mb-1">Técnico Asignado</label>
+                            <select name="assigned_technician_id"
+                                    class="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                                <option value="">Sin técnico asignado</option>
+                                @foreach ($technicians as $t)
+                                    <option value="{{ $t->id }}">{{ $t->full_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <button type="submit"
+                                class="w-full py-1.5 rounded-lg bg-zinc-900 text-white font-medium hover:bg-zinc-800 transition-colors shadow-xs cursor-pointer">
+                            Agregar Activo
+                        </button>
+                    </form>
+                </div>
+
+                {{-- Cargar por Oficina Completa --}}
+                <div class="bg-white rounded-xl border border-zinc-200/90 p-5 shadow-xs text-xs space-y-3">
+                    <h3 class="font-bold text-zinc-900 text-xs">Cargar por Dependencia Completa</h3>
+
                     <form method="POST" action="{{ route('campaigns.assets.bulk-unit', $campaign) }}" class="space-y-3">
                         @csrf
-                        <x-ui.select
-                            name="unit_id"
-                            label="Unidad organizacional"
-                            :value="old('unit_id')"
-                            :options="$organizationalUnits->pluck('name', 'id')->toArray()"
-                            placeholder="Seleccionar unidad..."
-                        />
-                        <x-ui.select
-                            name="assigned_technician_id"
-                            label="Técnico asignado"
-                            :value="old('assigned_technician_id')"
-                            :options="$technicians->pluck('full_name', 'id')->toArray()"
-                            placeholder="Sin técnico"
-                        />
-                        <x-ui.input name="scheduled_date" type="date" label="Fecha programada" :value="old('scheduled_date')" />
-                        <x-ui.button type="submit" class="w-full justify-center" size="sm" variant="secondary">
-                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                            Agregar todos por unidad
-                        </x-ui.button>
-                    </form>
-                </x-ui.card>
-
-                {{-- Bulk: crear casos masivos --}}
-                <x-ui.card>
-                    <x-slot:header>
                         <div>
-                            <h3 class="text-sm font-semibold text-slate-900">Crear casos masivos</h3>
-                            <p class="text-xs text-slate-400 mt-0.5">Un caso por cada activo sin caso asignado</p>
+                            <label class="block font-medium text-zinc-700 mb-1">Oficina / Unidad</label>
+                            <select name="unit_id" required
+                                    class="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                                <option value="">Seleccionar oficina...</option>
+                                @foreach ($organizationalUnits as $u)
+                                    <option value="{{ $u->id }}">{{ $u->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
-                    </x-slot:header>
-                    @php $pendingCasesEdit = $campaign->campaignAssets->whereNull('maintenance_case_id')->count(); @endphp
-                    @if ($pendingCasesEdit > 0)
-                    <form method="POST" action="{{ route('campaigns.cases.bulk-create', $campaign) }}" class="space-y-3"
-                          onsubmit="return confirm('¿Crear casos para los {{ $pendingCasesEdit }} activo(s) sin caso?')">
-                        @csrf
-                        <div class="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                            <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z"/></svg>
-                            <span class="text-xs text-amber-700">{{ $pendingCasesEdit }} activo(s) sin caso</span>
-                        </div>
-                        <x-ui.select
-                            name="assigned_technician_id"
-                            label="Técnico responsable"
-                            :value="old('assigned_technician_id')"
-                            :options="$technicians->pluck('full_name', 'id')->toArray()"
-                            placeholder="Seleccionar técnico..."
-                        />
-                        <x-ui.select
-                            name="maintenance_type"
-                            label="Tipo"
-                            :value="old('maintenance_type', 'preventivo')"
-                            :options="collect($maintenanceTypes)->mapWithKeys(fn($t) => [$t->value => $t->label()])->toArray()"
-                        />
-                        <x-ui.select
-                            name="priority"
-                            label="Prioridad"
-                            :value="old('priority', 'media')"
-                            :options="collect($priorities)->mapWithKeys(fn($p) => [$p->value => $p->label()])->toArray()"
-                        />
-                        <x-ui.textarea name="problem_description" label="Descripción" rows="2"
-                            :value="old('problem_description')" placeholder="Descripción para todos los casos..." />
-                        <x-ui.button type="submit" class="w-full justify-center" size="sm">
-                            Crear {{ $pendingCasesEdit }} caso(s)
-                        </x-ui.button>
-                    </form>
-                    @else
-                    <div class="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
-                        <svg class="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span class="text-xs text-emerald-700">Todos los activos tienen caso asignado.</span>
-                    </div>
-                    @endif
-                </x-ui.card>
 
+                        <div>
+                            <label class="block font-medium text-zinc-700 mb-1">Técnico Asignado</label>
+                            <select name="assigned_technician_id"
+                                    class="w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                                <option value="">Sin técnico asignado</option>
+                                @foreach ($technicians as $t)
+                                    <option value="{{ $t->id }}">{{ $t->full_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <button type="submit"
+                                class="w-full py-1.5 rounded-lg bg-zinc-900 text-white font-medium hover:bg-zinc-800 transition-colors shadow-xs cursor-pointer">
+                            Cargar Todos los Activos de la Oficina
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
-
-        {{-- Tabla de activos en la campaña --}}
-        @if ($campaign->campaignAssets->count() > 0)
-        <x-ui.data-table>
-            <x-slot:toolbar>
-                <div>
-                    <h3 class="text-sm font-semibold text-slate-900">Activos en campaña</h3>
-                    <p class="text-xs text-slate-500 mt-0.5">{{ $campaign->campaignAssets->count() }} activo(s)</p>
-                </div>
-            </x-slot:toolbar>
-            <x-slot:head>
-                <x-ui.th>Activo</x-ui.th>
-                <x-ui.th>Técnico</x-ui.th>
-                <x-ui.th>Estado</x-ui.th>
-                <x-ui.th>Caso</x-ui.th>
-                <x-ui.th></x-ui.th>
-            </x-slot:head>
-            @foreach ($campaign->campaignAssets as $ca)
-            @php
-                $caTone = match($ca->status) {
-                    'pendiente' => 'neutral', 'programado' => 'info',
-                    'atendido' => 'success', 'omitido' => 'danger', default => 'neutral',
-                };
-                $caLabel = match($ca->status) {
-                    'pendiente' => 'Pendiente', 'programado' => 'Programado',
-                    'atendido' => 'Atendido', 'omitido' => 'Omitido', default => $ca->status,
-                };
-            @endphp
-            <tr class="hover:bg-slate-50/50 transition-colors">
-                <x-ui.td>
-                    <div>
-                        <p class="font-medium text-slate-900 text-sm">{{ $ca->asset->name }}</p>
-                        <p class="text-xs text-slate-400">{{ $ca->asset->internal_code }}</p>
-                    </div>
-                </x-ui.td>
-                <x-ui.td>
-                    @if ($ca->assignedTechnician)
-                        <span class="text-sm text-slate-600">{{ $ca->assignedTechnician->full_name }}</span>
-                    @else
-                        <span class="text-xs text-slate-400">—</span>
-                    @endif
-                </x-ui.td>
-                <x-ui.td><x-ui.badge :tone="$caTone" :dot="true">{{ $caLabel }}</x-ui.badge></x-ui.td>
-                <x-ui.td>
-                    @if ($ca->maintenance_case_id)
-                        <span class="text-xs text-emerald-600 font-medium">Con caso</span>
-                    @else
-                        <span class="text-xs text-slate-400">Sin caso</span>
-                    @endif
-                </x-ui.td>
-                <x-ui.td>
-                    <form method="POST" action="{{ route('campaigns.assets.remove', [$campaign, $ca->asset_id]) }}"
-                          onsubmit="return confirm('¿Quitar este activo?')" class="inline">
-                        @csrf @method('DELETE')
-                        <x-ui.button type="submit" variant="ghost" size="xs" class="text-rose-600 hover:text-rose-700">Quitar</x-ui.button>
-                    </form>
-                </x-ui.td>
-            </tr>
-            @endforeach
-        </x-ui.data-table>
-        @endif
-
         @endif
         @endcan
-
     </div>
 
 </x-layouts.app>

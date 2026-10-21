@@ -10,17 +10,16 @@ use App\Enums\MaintenanceCaseStatus;
 use App\Models\AgentDevice;
 use App\Models\Asset;
 use App\Models\Employee;
-use App\Models\MaintenanceCase;
 use App\Models\MaintenanceCampaign;
+use App\Models\MaintenanceCase;
 use App\Models\User;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class TechnicianService
 {
     public function __construct(
         private readonly CreateCaseAction $createCaseAction,
-        private readonly CloseCaseAction  $closeCaseAction,
+        private readonly CloseCaseAction $closeCaseAction,
     ) {}
 
     public function getDashboardData(?Employee $employee): array
@@ -30,19 +29,24 @@ class TechnicianService
 
         if ($employee) {
             $myStats = [
-                'pending'     => MaintenanceCase::where('assigned_technician_id', $employee->id)
-                                    ->where('status', MaintenanceCaseStatus::PENDIENTE)->count(),
+                'pending' => MaintenanceCase::where('assigned_technician_id', $employee->id)
+                    ->whereNull('campaign_id')
+                    ->where('status', MaintenanceCaseStatus::PENDIENTE)->count(),
                 'in_progress' => MaintenanceCase::where('assigned_technician_id', $employee->id)
-                                    ->where('status', MaintenanceCaseStatus::EN_PROGRESO)->count(),
-                'waiting'     => MaintenanceCase::where('assigned_technician_id', $employee->id)
-                                    ->where('status', MaintenanceCaseStatus::EN_ESPERA)->count(),
-                'done_today'  => MaintenanceCase::where('assigned_technician_id', $employee->id)
-                                    ->where('status', MaintenanceCaseStatus::COMPLETADO)
-                                    ->whereDate('finished_at', today())->count(),
+                    ->whereNull('campaign_id')
+                    ->where('status', MaintenanceCaseStatus::EN_PROGRESO)->count(),
+                'waiting' => MaintenanceCase::where('assigned_technician_id', $employee->id)
+                    ->whereNull('campaign_id')
+                    ->where('status', MaintenanceCaseStatus::EN_ESPERA)->count(),
+                'done_today' => MaintenanceCase::where('assigned_technician_id', $employee->id)
+                    ->whereNull('campaign_id')
+                    ->where('status', MaintenanceCaseStatus::COMPLETADO)
+                    ->whereDate('finished_at', today())->count(),
             ];
 
             $myCases = MaintenanceCase::with(['asset', 'asset.organizationalUnit'])
                 ->where('assigned_technician_id', $employee->id)
+                ->whereNull('campaign_id')
                 ->whereNotIn('status', [
                     MaintenanceCaseStatus::COMPLETADO->value,
                     MaintenanceCaseStatus::CANCELADO->value,
@@ -60,10 +64,10 @@ class TechnicianService
         $offlineAgents = AgentDevice::with('asset')
             ->where(function ($q) {
                 $q->where('status', AgentDeviceStatus::DESCONECTADO)
-                  ->orWhere(function ($q2) {
-                      $q2->whereNotNull('last_heartbeat_at')
-                         ->where('last_heartbeat_at', '<', now()->subMinutes(10));
-                  });
+                    ->orWhere(function ($q2) {
+                        $q2->whereNotNull('last_heartbeat_at')
+                            ->where('last_heartbeat_at', '<', now()->subMinutes(10));
+                    });
             })
             ->limit(5)
             ->get();
@@ -74,10 +78,10 @@ class TechnicianService
     public function getWorkQueueData(?Employee $employee): array
     {
         $queues = [
-            'pendiente'   => collect(),
+            'pendiente' => collect(),
             'en_progreso' => collect(),
-            'en_espera'   => collect(),
-            'completado'  => collect(),
+            'en_espera' => collect(),
+            'completado' => collect(),
         ];
 
         if (! $employee) {
@@ -87,6 +91,7 @@ class TechnicianService
         foreach (['pendiente', 'en_progreso', 'en_espera'] as $status) {
             $queues[$status] = MaintenanceCase::with(['asset'])
                 ->where('assigned_technician_id', $employee->id)
+                ->whereNull('campaign_id')
                 ->where('status', $status)
                 ->latest()
                 ->get();
@@ -94,6 +99,7 @@ class TechnicianService
 
         $queues['completado'] = MaintenanceCase::with(['asset'])
             ->where('assigned_technician_id', $employee->id)
+            ->whereNull('campaign_id')
             ->where('status', MaintenanceCaseStatus::COMPLETADO)
             ->whereDate('finished_at', today())
             ->latest()
@@ -141,29 +147,29 @@ class TechnicianService
             $initialStatus = $data['final_status'] === 'en_progreso' ? 'en_progreso' : 'pendiente';
 
             $dto = CreateMaintenanceCaseDTO::fromArray([
-                'asset_id'                => $data['asset_id'],
-                'maintenance_type'        => $data['maintenance_type'],
-                'priority'                => $data['priority'],
-                'problem_description'     => $data['problem_description'],
-                'diagnosis'               => $data['diagnosis'] ?? null,
-                'actions_taken'           => $data['actions_taken'] ?? null,
-                'notes'                   => $data['notes'] ?? null,
-                'status'                  => $initialStatus,
-                'assigned_technician_id'  => $employee?->id,
+                'asset_id' => $data['asset_id'],
+                'maintenance_type' => $data['maintenance_type'],
+                'priority' => $data['priority'],
+                'problem_description' => $data['problem_description'],
+                'diagnosis' => $data['diagnosis'] ?? null,
+                'actions_taken' => $data['actions_taken'] ?? null,
+                'notes' => $data['notes'] ?? null,
+                'status' => $initialStatus,
+                'assigned_technician_id' => $employee?->id,
                 'reported_by_employee_id' => $employee?->id,
-                'created_by'              => $user->id,
+                'created_by' => $user->id,
             ]);
 
             $case = $this->createCaseAction->execute($dto);
 
             foreach ($data['items'] ?? [] as $item) {
-                $qty  = (int) $item['quantity'];
+                $qty = (int) $item['quantity'];
                 $cost = (float) ($item['unit_cost'] ?? 0);
                 $case->items()->create([
-                    'item_type'  => $item['item_type'],
-                    'name'       => $item['name'],
-                    'quantity'   => $qty,
-                    'unit_cost'  => $cost,
+                    'item_type' => $item['item_type'],
+                    'name' => $item['name'],
+                    'quantity' => $qty,
+                    'unit_cost' => $cost,
                     'total_cost' => $qty * $cost,
                 ]);
             }

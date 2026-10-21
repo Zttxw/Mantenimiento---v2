@@ -1,70 +1,105 @@
 <x-layouts.app title="Nueva Campaña" moduleLabel="Mantenimiento" pageTitle="Nueva Campaña">
 
-    <x-ui.page-header
-        title="Nueva campaña de mantenimiento"
-        description="Planifica un mantenimiento masivo sobre un conjunto de activos."
-    >
-        <x-slot:actions>
-            <x-ui.button variant="secondary" size="sm" href="{{ route('campaigns.index') }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
-                Volver
-            </x-ui.button>
-        </x-slot:actions>
-    </x-ui.page-header>
+    {{-- Encabezado --}}
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-5 border-b border-zinc-200/80 mb-6 max-w-3xl">
+        <div>
+            <nav class="flex items-center gap-1.5 text-xs text-zinc-400 mb-1.5">
+                <a href="{{ route('campaigns.index') }}" class="hover:text-zinc-700 transition-colors flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <span>Campañas</span>
+                </a>
+                <span>/</span>
+                <span class="text-zinc-600 font-medium">Nueva</span>
+            </nav>
+            <h1 class="text-2xl font-bold tracking-tight text-zinc-900">Planificar Campaña</h1>
+            <p class="text-xs text-zinc-500 mt-1">Configura un nuevo cronograma institucional de mantenimiento preventivo.</p>
+        </div>
 
-    <form method="POST" action="{{ route('campaigns.store') }}" class="max-w-2xl">
+        <a href="{{ route('campaigns.index') }}"
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 transition-colors">
+            Cancelar
+        </a>
+    </div>
+
+    {{-- Formulario Ultraminimalista --}}
+    <form method="POST" action="{{ route('campaigns.store') }}" class="max-w-3xl space-y-6">
         @csrf
 
-        <div class="space-y-4">
-            <x-ui.card>
-                <x-slot:header>
-                    <h3 class="text-sm font-semibold text-slate-900">Datos de la campaña</h3>
-                </x-slot:header>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div class="sm:col-span-2">
-                        <x-ui.input name="name" label="Nombre de la campaña" :value="old('name')" placeholder="Ej: Mantenimiento Preventivo Q1 2024" />
-                    </div>
-                    <div class="sm:col-span-2">
-                        <x-ui.textarea name="objective" label="Objetivo" :value="old('objective')" rows="2" placeholder="Describe el objetivo principal de la campaña..." />
-                    </div>
-                    <x-ui.select
-                        name="coordinator_id"
-                        label="Coordinador"
-                        :value="old('coordinator_id')"
-                        :options="$coordinators->pluck('full_name', 'id')->toArray()"
-                        placeholder="Seleccionar coordinador..."
-                    />
-                    <x-ui.select
-                        name="status"
-                        label="Estado inicial"
-                        :value="old('status', 'planificada')"
-                        :options="collect($statuses)->mapWithKeys(fn($s) => [$s->value => $s->label()])->toArray()"
-                    />
-                    <x-ui.input name="start_date" type="date" label="Fecha de inicio" :value="old('start_date')" />
-                    <x-ui.input name="end_date" type="date" label="Fecha de fin estimada" :value="old('end_date')" />
-                </div>
-            </x-ui.card>
-
-            <div class="flex gap-3">
-                <x-ui.button type="submit">Crear campaña</x-ui.button>
-                <x-ui.button variant="secondary" href="{{ route('campaigns.index') }}">Cancelar</x-ui.button>
+        <div class="bg-white rounded-2xl border border-zinc-200/90 p-6 shadow-xs space-y-5 text-xs">
+            {{-- Nombre --}}
+            <div>
+                <label class="block font-semibold text-zinc-800 mb-1.5">Nombre de la Campaña *</label>
+                <input type="text" name="name" required value="{{ old('name') }}" placeholder="Ej: Mantenimiento Preventivo y Correctivo N° 1 - 2026"
+                       class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-medium">
+                @error('name') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
             </div>
 
-            {{-- Info bulk ops --}}
-            <div class="flex items-start gap-3 px-4 py-3 bg-sigat-50 border border-sigat-200 rounded-xl">
-                <svg class="w-5 h-5 text-sigat-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
-                </svg>
+            {{-- Objetivo --}}
+            <div>
+                <label class="block font-semibold text-zinc-800 mb-1.5">Objetivo Institucional</label>
+                <textarea name="objective" rows="3" placeholder="Describe el alcance y propósito de la campaña (ej. atención preventiva integral de equipos de cómputo y periféricos en el palacio municipal)..."
+                          class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">{{ old('objective') }}</textarea>
+                @error('objective') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+            </div>
+
+            {{-- Coordinador y Estado --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <p class="text-sm font-medium text-sigat-800">Asignación masiva disponible tras crear</p>
-                    <p class="text-xs text-sigat-600 mt-0.5">
-                        Una vez creada la campaña podrás <strong>agregar activos por unidad organizacional</strong>
-                        asignándolos a un técnico, y <strong>crear casos de mantenimiento masivos</strong>
-                        para todos los activos de la campaña en un solo paso.
-                    </p>
+                    <label class="block font-semibold text-zinc-800 mb-1.5">Coordinador Responsable</label>
+                    <select name="coordinator_id"
+                            class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                        <option value="">Seleccionar coordinador...</option>
+                        @foreach ($coordinators as $coord)
+                            <option value="{{ $coord->id }}" {{ old('coordinator_id') == $coord->id ? 'selected' : '' }}>
+                                {{ $coord->full_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('coordinator_id') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-zinc-800 mb-1.5">Estado Inicial</label>
+                    <select name="status"
+                            class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                        @foreach ($statuses as $status)
+                            <option value="{{ $status->value }}" {{ old('status', 'planificada') === $status->value ? 'selected' : '' }}>
+                                {{ $status->label() }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('status') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
                 </div>
             </div>
+
+            {{-- Fechas --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block font-semibold text-zinc-800 mb-1.5">Fecha de Inicio</label>
+                    <input type="date" name="start_date" value="{{ old('start_date', now()->toDateString()) }}"
+                           class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-mono">
+                    @error('start_date') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-zinc-800 mb-1.5">Fecha de Fin Estimada</label>
+                    <input type="date" name="end_date" value="{{ old('end_date', now()->addMonths(3)->toDateString()) }}"
+                           class="w-full rounded-lg border border-zinc-200 px-3.5 py-2 text-xs bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 font-mono">
+                    @error('end_date') <span class="text-rose-600 text-[11px] mt-1 block">{{ $message }}</span> @enderror
+                </div>
+            </div>
+        </div>
+
+        {{-- Acciones --}}
+        <div class="flex items-center gap-3">
+            <button type="submit"
+                    class="px-5 py-2 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-800 transition-colors shadow-sm cursor-pointer">
+                Crear Campaña
+            </button>
+            <a href="{{ route('campaigns.index') }}"
+               class="px-4 py-2 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 text-xs font-medium transition-colors">
+                Cancelar
+            </a>
         </div>
     </form>
 

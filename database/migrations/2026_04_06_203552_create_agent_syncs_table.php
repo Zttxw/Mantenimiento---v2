@@ -21,7 +21,7 @@ return new class extends Migration
             $table->timestamp('synced_at');
             $table->timestamps();
 
-            $table->index('agent_device_id','synced_at');
+            $table->index('agent_device_id', 'synced_at');
         });
     }
 

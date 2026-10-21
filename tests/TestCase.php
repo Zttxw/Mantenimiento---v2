@@ -15,7 +15,7 @@ abstract class TestCase extends BaseTestCase
 
         if ($defaultConnection !== 'sqlite' || $databaseName !== ':memory:') {
             throw new \RuntimeException(
-                "SEGURIDAD: Las pruebas deben ejecutarse exclusivamente contra SQLite en memoria (:memory:). " .
+                'SEGURIDAD: Las pruebas deben ejecutarse exclusivamente contra SQLite en memoria (:memory:). '.
                 "Configuración actual: connection='{$defaultConnection}', database='{$databaseName}'."
             );
         }

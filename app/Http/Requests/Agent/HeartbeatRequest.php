@@ -14,13 +14,13 @@ class HeartbeatRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'agent_version'      => ['required', 'string', 'max:20'],
-            'status'             => ['nullable', 'string', 'max:20'],
-            'sent_at_utc'        => ['nullable', 'date'],
-            'last_ip'            => ['nullable', 'ip'],
+            'agent_version' => ['required', 'string', 'max:20'],
+            'status' => ['nullable', 'string', 'max:20'],
+            'sent_at_utc' => ['nullable', 'date'],
+            'last_ip' => ['nullable', 'ip'],
             'last_snapshot_json' => ['nullable', 'array'],
-            'health'             => ['nullable', 'array'],
-            'asset_code'         => ['nullable', 'string', 'max:100'],
+            'health' => ['nullable', 'array'],
+            'asset_code' => ['nullable', 'string', 'max:100'],
             'organizational_unit_id' => ['nullable', 'integer', 'exists:organizational_units,id'],
             'responsible_employee_id' => ['nullable', 'integer', 'exists:employees,id'],
         ];

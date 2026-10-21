@@ -19,9 +19,9 @@ return new class extends Migration
             $table->string('code', 50)->nullable();
             $table->string('title');
             $table->string('file_path');
-            $table->unsignedBigInteger('generated_by');       
+            $table->unsignedBigInteger('generated_by');
             $table->timestamp('generated_at');
-            $table->jsonb('meta_json')->nullable();     
+            $table->jsonb('meta_json')->nullable();
             $table->timestamps();
 
             $table->foreign('generated_by')->references('id')->on('users');

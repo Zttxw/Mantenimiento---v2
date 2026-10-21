@@ -19,11 +19,11 @@ class AgentSync extends Model
     ];
 
     protected $casts = [
-        'sync_type'             => AgentSyncType::class,
-        'status'                => AgentSyncStatus::class,
-        'payload_json'          => 'array',
+        'sync_type' => AgentSyncType::class,
+        'status' => AgentSyncStatus::class,
+        'payload_json' => 'array',
         'detected_changes_json' => 'array',
-        'synced_at'             => 'datetime',
+        'synced_at' => 'datetime',
     ];
 
     public function agentDevice(): BelongsTo

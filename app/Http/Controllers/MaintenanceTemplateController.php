@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\AssetType;
 use App\Enums\MaintenanceItemType;
 use App\Enums\MaintenanceType;
 use App\Models\MaintenanceTemplate;
@@ -20,7 +19,7 @@ class MaintenanceTemplateController extends Controller
         $this->authorize('maintenance-template.view');
 
         $templates = $this->service->getPaginated(request()->only(['type']));
-        $types     = MaintenanceType::cases();
+        $types = MaintenanceType::cases();
 
         return view('maintenance-templates.index', compact('templates', 'types'));
     }
@@ -29,7 +28,7 @@ class MaintenanceTemplateController extends Controller
     {
         $this->authorize('maintenance-template.create');
 
-        $types     = MaintenanceType::cases();
+        $types = MaintenanceType::cases();
         $itemTypes = MaintenanceItemType::cases();
 
         return view('maintenance-templates.create', compact('types', 'itemTypes'));
@@ -40,23 +39,23 @@ class MaintenanceTemplateController extends Controller
         $this->authorize('maintenance-template.create');
 
         $data = $request->validate([
-            'name'                           => 'required|string|max:150',
-            'maintenance_type'               => 'nullable|string|in:' . implode(',', array_column(MaintenanceType::cases(), 'value')),
-            'description'                    => 'nullable|string|max:500',
-            'problem_description'            => 'nullable|string|max:2000',
-            'diagnosis_template'             => 'nullable|string|max:2000',
-            'actions_template'               => 'nullable|string|max:2000',
-            'steps_json'                     => 'nullable|array',
-            'steps_json.*.title'             => 'required_with:steps_json|string|max:200',
-            'steps_json.*.detail'            => 'nullable|string|max:500',
+            'name' => 'required|string|max:150',
+            'maintenance_type' => 'nullable|string|in:'.implode(',', array_column(MaintenanceType::cases(), 'value')),
+            'description' => 'nullable|string|max:500',
+            'problem_description' => 'nullable|string|max:2000',
+            'diagnosis_template' => 'nullable|string|max:2000',
+            'actions_template' => 'nullable|string|max:2000',
+            'steps_json' => 'nullable|array',
+            'steps_json.*.title' => 'required_with:steps_json|string|max:200',
+            'steps_json.*.detail' => 'nullable|string|max:500',
             'next_maintenance_interval_days' => 'nullable|integer|min:1|max:3650',
-            'is_active'                      => 'boolean',
-            'items'                          => 'nullable|array',
-            'items.*.item_type'              => 'required_with:items|string|in:' . implode(',', array_column(MaintenanceItemType::cases(), 'value')),
-            'items.*.name'                   => 'required_with:items|string|max:200',
-            'items.*.description'            => 'nullable|string|max:500',
-            'items.*.quantity'               => 'nullable|numeric|min:0.01',
-            'items.*.unit_cost'              => 'nullable|numeric|min:0',
+            'is_active' => 'boolean',
+            'items' => 'nullable|array',
+            'items.*.item_type' => 'required_with:items|string|in:'.implode(',', array_column(MaintenanceItemType::cases(), 'value')),
+            'items.*.name' => 'required_with:items|string|max:200',
+            'items.*.description' => 'nullable|string|max:500',
+            'items.*.quantity' => 'nullable|numeric|min:0.01',
+            'items.*.unit_cost' => 'nullable|numeric|min:0',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
@@ -72,7 +71,7 @@ class MaintenanceTemplateController extends Controller
         $this->authorize('maintenance-template.edit');
 
         $maintenanceTemplate->load('items');
-        $types     = MaintenanceType::cases();
+        $types = MaintenanceType::cases();
         $itemTypes = MaintenanceItemType::cases();
 
         return view('maintenance-templates.edit', compact('maintenanceTemplate', 'types', 'itemTypes'));
@@ -83,23 +82,23 @@ class MaintenanceTemplateController extends Controller
         $this->authorize('maintenance-template.edit');
 
         $data = $request->validate([
-            'name'                           => 'required|string|max:150',
-            'maintenance_type'               => 'nullable|string|in:' . implode(',', array_column(MaintenanceType::cases(), 'value')),
-            'description'                    => 'nullable|string|max:500',
-            'problem_description'            => 'nullable|string|max:2000',
-            'diagnosis_template'             => 'nullable|string|max:2000',
-            'actions_template'               => 'nullable|string|max:2000',
-            'steps_json'                     => 'nullable|array',
-            'steps_json.*.title'             => 'required_with:steps_json|string|max:200',
-            'steps_json.*.detail'            => 'nullable|string|max:500',
+            'name' => 'required|string|max:150',
+            'maintenance_type' => 'nullable|string|in:'.implode(',', array_column(MaintenanceType::cases(), 'value')),
+            'description' => 'nullable|string|max:500',
+            'problem_description' => 'nullable|string|max:2000',
+            'diagnosis_template' => 'nullable|string|max:2000',
+            'actions_template' => 'nullable|string|max:2000',
+            'steps_json' => 'nullable|array',
+            'steps_json.*.title' => 'required_with:steps_json|string|max:200',
+            'steps_json.*.detail' => 'nullable|string|max:500',
             'next_maintenance_interval_days' => 'nullable|integer|min:1|max:3650',
-            'is_active'                      => 'boolean',
-            'items'                          => 'nullable|array',
-            'items.*.item_type'              => 'required_with:items|string|in:' . implode(',', array_column(MaintenanceItemType::cases(), 'value')),
-            'items.*.name'                   => 'required_with:items|string|max:200',
-            'items.*.description'            => 'nullable|string|max:500',
-            'items.*.quantity'               => 'nullable|numeric|min:0.01',
-            'items.*.unit_cost'              => 'nullable|numeric|min:0',
+            'is_active' => 'boolean',
+            'items' => 'nullable|array',
+            'items.*.item_type' => 'required_with:items|string|in:'.implode(',', array_column(MaintenanceItemType::cases(), 'value')),
+            'items.*.name' => 'required_with:items|string|max:200',
+            'items.*.description' => 'nullable|string|max:500',
+            'items.*.quantity' => 'nullable|numeric|min:0.01',
+            'items.*.unit_cost' => 'nullable|numeric|min:0',
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
@@ -136,7 +135,7 @@ class MaintenanceTemplateController extends Controller
         $templates = $this->service->getActiveByType($request->input('type'));
 
         return response()->json($templates->map(fn ($t) => [
-            'id'   => $t->id,
+            'id' => $t->id,
             'name' => $t->name,
         ])->values());
     }

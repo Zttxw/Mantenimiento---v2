@@ -1,12 +1,12 @@
-<x-layouts.app title="Nuevo Caso" moduleLabel="Mantenimiento" pageTitle="Nuevo Caso de Mantenimiento">
+<x-layouts.app title="Nuevo Ticket de Soporte" moduleLabel="Mesa de Ayuda" pageTitle="Nuevo Ticket">
 
     <x-ui.page-header
-        title="Nuevo caso de mantenimiento"
-        description="Registra una nueva intervención técnica sobre un activo."
+        title="Nuevo Ticket de Soporte"
+        description="Registra una solicitud de asistencia técnica o reporte de incidencia en dependencias municipales."
     >
         <x-slot:actions>
             <x-ui.button variant="secondary" size="sm" href="{{ route('maintenance-cases.index') }}">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
                 Volver
             </x-ui.button>
         </x-slot:actions>
@@ -99,7 +99,7 @@
             </x-ui.card>
 
             <div class="flex gap-3">
-                <x-ui.button type="submit">Crear caso</x-ui.button>
+                <x-ui.button type="submit">Crear ticket de soporte</x-ui.button>
                 <x-ui.button variant="secondary" href="{{ route('maintenance-cases.index') }}">Cancelar</x-ui.button>
             </div>
         </div>

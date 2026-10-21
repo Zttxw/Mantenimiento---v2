@@ -23,11 +23,12 @@ class OrganizationalUnitSeeder extends Seeder
         $rows = $payload['data'] ?? [];
         if (empty($rows)) {
             $this->command?->warn('dependencias.json esta vacio.');
+
             return;
         }
 
         $cleanRows = $this->filterValid($rows);
-        $codeMap   = $this->resolveUniqueCodes($cleanRows);
+        $codeMap = $this->resolveUniqueCodes($cleanRows);
 
         DB::transaction(function () use ($cleanRows, $codeMap) {
             $this->upsertWithoutParent($cleanRows, $codeMap);
@@ -45,7 +46,7 @@ class OrganizationalUnitSeeder extends Seeder
     private function filterValid(array $rows): array
     {
         return array_values(array_filter($rows, function (array $r): bool {
-            $sigla  = trim((string) ($r['sigla'] ?? ''));
+            $sigla = trim((string) ($r['sigla'] ?? ''));
             $nombre = trim((string) ($r['nombre'] ?? ''));
 
             if ($sigla === '' || strcasecmp($sigla, 'NULL') === 0) {
@@ -54,6 +55,7 @@ class OrganizationalUnitSeeder extends Seeder
             if ($nombre === '' || strcasecmp($nombre, 'NULL') === 0) {
                 return false;
             }
+
             return true;
         }));
     }
@@ -73,6 +75,7 @@ class OrganizationalUnitSeeder extends Seeder
                 ? "{$sigla}-{$r['co_dependencia']}"
                 : $sigla;
         }
+
         return $codeMap;
     }
 
@@ -84,22 +87,22 @@ class OrganizationalUnitSeeder extends Seeder
             OrganizationalUnit::updateOrCreate(
                 ['code' => $code],
                 [
-                    'parent_id'  => null,
-                    'type'       => OrgUnitType::fromName($r['nombre']),
-                    'name'       => $this->normalizeName($r['nombre']),
-                    'is_active'  => (bool) ($r['is_active'] ?? 1),
+                    'parent_id' => null,
+                    'type' => OrgUnitType::fromName($r['nombre']),
+                    'name' => $this->normalizeName($r['nombre']),
+                    'is_active' => (bool) ($r['is_active'] ?? 1),
                     'sort_order' => (int) ($r['nivel'] ?? 0),
-                    'meta_json'  => [
-                        'co_dependencia'        => $r['co_dependencia'],
-                        'sigla'                 => $r['sigla'],
-                        'nombre_corto'          => $r['nombre_corto'] ?: null,
-                        'nivel'                 => $r['nivel'] ?: null,
-                        'tipo_sgd'              => $r['tipo_sgd'] ?: null,
-                        'co_dependencia_padre'  => $r['co_dependencia_padre'] ?: null,
-                        'co_empleado_jefe'      => $r['co_empleado_jefe'] ?: null,
-                        'co_empleado_titular'   => $r['co_empleado_titular'] ?: null,
-                        'cargo_completo'        => $r['cargo_completo'] ?: null,
-                        'mesa_partes'           => $r['mesa_partes'] === '1',
+                    'meta_json' => [
+                        'co_dependencia' => $r['co_dependencia'],
+                        'sigla' => $r['sigla'],
+                        'nombre_corto' => $r['nombre_corto'] ?: null,
+                        'nivel' => $r['nivel'] ?: null,
+                        'tipo_sgd' => $r['tipo_sgd'] ?: null,
+                        'co_dependencia_padre' => $r['co_dependencia_padre'] ?: null,
+                        'co_empleado_jefe' => $r['co_empleado_jefe'] ?: null,
+                        'co_empleado_titular' => $r['co_empleado_titular'] ?: null,
+                        'cargo_completo' => $r['cargo_completo'] ?: null,
+                        'mesa_partes' => $r['mesa_partes'] === '1',
                     ],
                 ]
             );
@@ -113,8 +116,8 @@ class OrganizationalUnitSeeder extends Seeder
             ->all();
 
         foreach ($rows as $r) {
-            $childCode  = $codeMap[$r['co_dependencia']];
-            $parentSgd  = $r['co_dependencia_padre'] ?? '';
+            $childCode = $codeMap[$r['co_dependencia']];
+            $parentSgd = $r['co_dependencia_padre'] ?? '';
 
             if ($parentSgd === '' || $parentSgd === $r['co_dependencia']) {
                 continue;

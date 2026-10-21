@@ -22,7 +22,7 @@ class StorePermissionRequest extends FormRequest
     {
         return [
             'name.required' => 'El nombre del permiso es requerido.',
-            'name.unique'   => 'Ya existe un permiso con ese nombre.',
+            'name.unique' => 'Ya existe un permiso con ese nombre.',
         ];
     }
 }

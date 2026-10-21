@@ -21,7 +21,7 @@ return new class extends Migration
             $table->date('end_date')->nullable();
             $table->string('status', 30)->default('planificada');
             $table->foreignId('coordinator_employee_id')
-                  ->nullable()->constrained('employees')->nullOnDelete();
+                ->nullable()->constrained('employees')->nullOnDelete();
             $table->text('summary')->nullable();
             $table->jsonb('metrics_json')->nullable();
             $table->unsignedBigInteger('created_by');

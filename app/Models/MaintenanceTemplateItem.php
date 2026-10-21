@@ -19,9 +19,9 @@ class MaintenanceTemplateItem extends Model
     ];
 
     protected $casts = [
-        'item_type'  => MaintenanceItemType::class,
-        'quantity'   => 'decimal:2',
-        'unit_cost'  => 'decimal:2',
+        'item_type' => MaintenanceItemType::class,
+        'quantity' => 'decimal:2',
+        'unit_cost' => 'decimal:2',
     ];
 
     public function template(): BelongsTo

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\AssetType;
 use App\Enums\MaintenanceType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -27,8 +26,8 @@ class MaintenanceTemplate extends Model
 
     protected $casts = [
         'maintenance_type' => MaintenanceType::class,
-        'steps_json'       => 'array',
-        'is_active'        => 'boolean',
+        'steps_json' => 'array',
+        'is_active' => 'boolean',
     ];
 
     public function items(): HasMany
@@ -54,20 +53,20 @@ class MaintenanceTemplate extends Model
     public function toApiArray(): array
     {
         return [
-            'id'                               => $this->id,
-            'name'                             => $this->name,
-            'maintenance_type'                 => $this->maintenance_type?->value,
-            'problem_description'              => $this->problem_description,
-            'diagnosis_template'               => $this->diagnosis_template,
-            'actions_template'                 => $this->actions_template,
-            'steps_json'                       => $this->steps_json ?? [],
-            'next_maintenance_interval_days'   => $this->next_maintenance_interval_days,
-            'items'                            => $this->items->map(fn ($i) => [
-                'item_type'   => $i->item_type,
-                'name'        => $i->name,
+            'id' => $this->id,
+            'name' => $this->name,
+            'maintenance_type' => $this->maintenance_type?->value,
+            'problem_description' => $this->problem_description,
+            'diagnosis_template' => $this->diagnosis_template,
+            'actions_template' => $this->actions_template,
+            'steps_json' => $this->steps_json ?? [],
+            'next_maintenance_interval_days' => $this->next_maintenance_interval_days,
+            'items' => $this->items->map(fn ($i) => [
+                'item_type' => $i->item_type,
+                'name' => $i->name,
                 'description' => $i->description,
-                'quantity'    => $i->quantity,
-                'unit_cost'   => $i->unit_cost,
+                'quantity' => $i->quantity,
+                'unit_cost' => $i->unit_cost,
             ])->toArray(),
         ];
     }

@@ -13,7 +13,7 @@ class AgentSnapshotHashTest extends PhpUnitTestCase
     {
         parent::setUp();
         // Instanciamos el servicio directamente sin dependencias complejas para test unitario puro
-        $this->service = new AgentDeviceService();
+        $this->service = new AgentDeviceService;
     }
 
     public function test_hash_is_identical_when_only_volatile_fields_change(): void
