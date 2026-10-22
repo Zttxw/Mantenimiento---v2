@@ -21,6 +21,7 @@ class OrganizationalUnitController extends Controller
 
         $units = $this->service->getPaginated(request()->only(['search', 'type', 'status']));
         $treeData = $this->service->getTreeArray();
+        $officialOrganigram = $this->service->getOfficialOrganigram();
 
         $stats = [
             'total' => OrganizationalUnit::count(),
@@ -29,7 +30,7 @@ class OrganizationalUnitController extends Controller
             'with_assets' => OrganizationalUnit::has('assets')->count(),
         ];
 
-        return view('organizational-units.index', compact('units', 'treeData', 'stats'));
+        return view('organizational-units.index', compact('units', 'treeData', 'officialOrganigram', 'stats'));
     }
 
     public function create()
