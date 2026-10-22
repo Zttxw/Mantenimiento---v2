@@ -21,7 +21,6 @@ class OrganizationalUnitController extends Controller
 
         $units = $this->service->getPaginated(request()->only(['search', 'type', 'status']));
         $treeData = $this->service->getTreeArray();
-        $officialOrganigram = $this->service->getOfficialOrganigram();
 
         $stats = [
             'total' => OrganizationalUnit::count(),
@@ -30,7 +29,11 @@ class OrganizationalUnitController extends Controller
             'with_assets' => OrganizationalUnit::has('assets')->count(),
         ];
 
-        return view('organizational-units.index', compact('units', 'treeData', 'officialOrganigram', 'stats'));
+        $allParents = OrganizationalUnit::where('is_active', true)->orderBy('name')->select('id', 'name', 'code')->get();
+        $employees = Employee::where('is_active', true)->orderBy('full_name')->select('id', 'full_name', 'position')->get();
+        $unitTypes = \App\Enums\OrgUnitType::cases();
+
+        return view('organizational-units.index', compact('units', 'treeData', 'stats', 'allParents', 'employees', 'unitTypes'));
     }
 
     public function create()
@@ -45,9 +48,23 @@ class OrganizationalUnitController extends Controller
 
     public function store(StoreOrganizationalUnitRequest $request)
     {
-        $this->service->create(
+        $unit = $this->service->create(
             OrganizationalUnitDTO::fromArray($request->validated())
         );
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Dependencia creada correctamente.',
+                'unit' => [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                    'code' => $unit->code,
+                    'type_label' => $unit->type->label(),
+                    'parent_id' => $unit->parent_id,
+                ],
+            ], 201);
+        }
 
         return redirect()->route('organizational-units.index')
             ->with('success', 'Unidad organizacional creada correctamente.');
