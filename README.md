@@ -62,6 +62,9 @@ php artisan test --filter=AgentSyncPruneAndDeduplicationTest
 ## 📁 Documentación del Proyecto
 
 - [Runbook Oficial de Producción](docs/RUNBOOK_PRODUCCION.md): Procedimiento de backup, despliegue y limpieza.
-- [Bitácora de Sesión Técnica](docs/historial-sesiones/2026-10-21_optimizacion_base_datos_y_agentes.md): Auditoría de datos reales y registro de decisiones.
+- [Bitácoras de Sesiones Técnicas](docs/historial-sesiones/):
+  - [2026-10-21: Optimización de Base de Datos y Agentes](docs/historial-sesiones/2026-10-21_optimizacion_base_datos_y_agentes.md)
+  - [2026-10-21: Rediseño de Campañas, Desacople de Soporte y Rendimiento](docs/historial-sesiones/2026-10-21_rediseño_campañas_desacople_soporte_y_optimizacion.md)
+  - [2026-10-21: Estructura Orgánica (Organigrama Oficial MDSJ) y Personal](docs/historial-sesiones/2026-10-21_rediseño_organigrama_unidades_organicas_y_personal.md)
 - [Estado de Implementación](ESTADO_IMPLEMENTACION.md): Módulos y avance del sistema.
 - [Mapa del Sistema](MAPA_SISTEMA_IA.md): Arquitectura detallada de modelos y relaciones.
