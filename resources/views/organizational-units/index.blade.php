@@ -5,7 +5,7 @@
      class="flex flex-col h-[calc(100vh-95px)] overflow-hidden select-none">
 
     {{-- ========================================================================= --}}
-    {{-- BARRA SUPERIOR: ENCABEZADO MINIMALISTA, MÉTRICAS Y SELECTOR DE VISTAS     --}}
+    {{-- BARRA SUPERIOR: ENCABEZADO INSTITUCIONAL, MÉTRICAS Y SELECTOR DE VISTAS   --}}
     {{-- ========================================================================= --}}
     <div class="flex items-center justify-between gap-3 pb-2.5 mb-2 border-b border-zinc-200/80 shrink-0">
         {{-- Título y Métricas Rápidas --}}
@@ -24,7 +24,11 @@
                 </span>
                 <span class="hidden sm:inline text-zinc-300">&bull;</span>
                 <span class="hidden sm:inline text-zinc-600 font-sans">
-                    <strong class="font-mono text-blue-600">{{ $stats['with_assets'] ?? 0 }}</strong> con activos OTI
+                    <strong class="font-mono text-zinc-900">{{ $stats['with_responsible'] ?? 0 }}</strong> con jefatura
+                </span>
+                <span class="hidden sm:inline text-zinc-300">&bull;</span>
+                <span class="hidden sm:inline text-zinc-600 font-sans">
+                    <strong class="font-mono text-zinc-900">{{ $stats['total_employees'] ?? 0 }}</strong> personal adscrito
                 </span>
             </div>
         </div>
@@ -86,7 +90,7 @@
                     <svg class="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                     <input type="text"
                            x-model="folderFilter"
-                           placeholder="Filtrar carpetas y áreas..."
+                           placeholder="Filtrar carpetas, áreas y dependencias..."
                            class="w-full pl-9 pr-3 py-1.5 bg-zinc-50 hover:bg-white focus:bg-white rounded-lg border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900 transition-colors">
                 </div>
             </div>
@@ -107,9 +111,9 @@
                 <div class="w-12 h-12 rounded-2xl bg-zinc-100 text-zinc-700 flex items-center justify-center mx-auto mb-4">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 </div>
-                <h3 class="text-base font-bold text-zinc-900">Estructura sin datos cargados</h3>
+                <h3 class="text-base font-bold text-zinc-900">Estructura institucional sin dependencias</h3>
                 <p class="text-xs text-zinc-500 mt-1 max-w-md mx-auto leading-relaxed">
-                    Cuando inicias en una nueva institución, comienzas creando la carpeta de la dependencia principal (ej. Alcaldía, Rectorado o Gerencia General), y luego vas armando sus subcarpetas.
+                    Comienza definiendo la carpeta principal de la institución (ej. Alcaldía, Rectorado, Dirección General o Gerencia General). Luego podrás ir agregando sus sub-áreas dependientes como carpetas y subcarpetas.
                 </p>
                 <div class="mt-5">
                     @can('org-unit.create')
@@ -153,26 +157,28 @@
                             <template x-if="rootNode.code">
                                 <span class="px-1.5 py-0.2 rounded text-[9px] font-mono bg-zinc-100 text-zinc-600 border border-zinc-200" x-text="rootNode.code"></span>
                             </template>
+
+                            {{-- Responsable Titular Abreviado --}}
+                            <template x-if="rootNode.responsible">
+                                <span class="hidden md:inline text-[11px] text-zinc-500 font-sans truncate max-w-[200px]"
+                                      x-text="'• ' + rootNode.responsible.name"></span>
+                            </template>
                         </div>
 
-                        {{-- Métricas y Botón Rápido + Subcarpeta --}}
+                        {{-- Métricas Organizacionales y Botón Rápido + Subcarpeta --}}
                         <div class="flex items-center gap-3 shrink-0" @click.stop>
                             {{-- Conteo de Subcarpetas --}}
                             <template x-if="rootNode.children && rootNode.children.length > 0">
                                 <span class="text-[10px] text-zinc-400 font-mono" x-text="rootNode.children.length + ' sub-áreas'"></span>
                             </template>
 
-                            {{-- Personal y Activos OTI --}}
-                            <div class="hidden sm:flex items-center gap-2 text-[10px] font-mono text-zinc-500">
-                                <span class="flex items-center gap-1" title="Personal adscrito">
+                            {{-- Personal Adscrito --}}
+                            <template x-if="rootNode.employees_count > 0">
+                                <span class="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono text-zinc-500" title="Personal adscrito">
                                     <svg class="w-3 h-3 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
                                     <span x-text="rootNode.employees_count"></span>
                                 </span>
-                                <span class="flex items-center gap-1" title="Activos OTI">
-                                    <svg class="w-3 h-3 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
-                                    <span x-text="rootNode.assets_count"></span>
-                                </span>
-                            </div>
+                            </template>
 
                             {{-- Botón "+ Sub-área" para armar como carpetas --}}
                             @can('org-unit.create')
@@ -216,6 +222,11 @@
                                         <template x-if="child.code">
                                             <span class="px-1 py-0.2 rounded text-[8.5px] font-mono bg-zinc-100 text-zinc-500" x-text="child.code"></span>
                                         </template>
+
+                                        <template x-if="child.responsible">
+                                            <span class="hidden md:inline text-[10.5px] text-zinc-400 font-sans truncate max-w-[180px]"
+                                                  x-text="'• ' + child.responsible.name"></span>
+                                        </template>
                                     </div>
 
                                     <div class="flex items-center gap-2.5 shrink-0" @click.stop>
@@ -223,10 +234,12 @@
                                             <span class="text-[9.5px] text-zinc-400 font-mono" x-text="child.children.length + ' sub-áreas'"></span>
                                         </template>
 
-                                        <div class="hidden sm:flex items-center gap-2 text-[9.5px] font-mono text-zinc-400">
-                                            <span x-text="'👥 ' + child.employees_count"></span>
-                                            <span x-text="'💻 ' + child.assets_count"></span>
-                                        </div>
+                                        <template x-if="child.employees_count > 0">
+                                            <span class="hidden sm:inline-flex items-center gap-1 text-[9.5px] font-mono text-zinc-400">
+                                                <svg class="w-3 h-3 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
+                                                <span x-text="child.employees_count"></span>
+                                            </span>
+                                        </template>
 
                                         @can('org-unit.create')
                                         <button type="button"
@@ -250,10 +263,14 @@
                                     <template x-for="subchild in child.children" :key="subchild.id">
                                         <div class="flex items-center justify-between p-1.5 rounded hover:bg-zinc-50 text-xs">
                                             <div class="flex items-center gap-2 min-w-0 pr-2">
-                                                <span class="w-2 h-2 rounded-full bg-zinc-300"></span>
+                                                <span class="w-1.5 h-1.5 rounded-full bg-zinc-300"></span>
                                                 <span class="text-zinc-700 truncate" x-text="subchild.name"></span>
                                                 <template x-if="subchild.code">
                                                     <span class="text-[8.5px] font-mono text-zinc-400" x-text="subchild.code"></span>
+                                                </template>
+                                                <template x-if="subchild.responsible">
+                                                    <span class="hidden md:inline text-[10px] text-zinc-400 font-sans truncate"
+                                                          x-text="'• ' + subchild.responsible.name"></span>
                                                 </template>
                                             </div>
                                             <div class="flex items-center gap-2 shrink-0">
@@ -428,17 +445,13 @@
                             <h4 class="text-[11px] font-semibold text-zinc-900 leading-tight line-clamp-2 group-hover:text-blue-700 transition-colors"
                                 x-text="node.name"></h4>
 
-                            {{-- Indicadores en Símbolos SVG (Personal y Activos OTI) --}}
-                            <div class="flex items-center justify-center gap-2 mt-0.5 text-[8.5px] font-mono text-zinc-400">
-                                <span class="flex items-center gap-0.5" title="Personal adscrito">
-                                    <svg class="w-2.5 h-2.5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg>
-                                    <span x-text="node.employees_count"></span>
-                                </span>
-                                <span class="flex items-center gap-0.5" :class="node.assets_count > 0 ? 'text-blue-600 font-bold' : ''" title="Equipos OTI">
-                                    <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
-                                    <span x-text="node.assets_count"></span>
-                                </span>
-                            </div>
+                            {{-- Encargado / Titular --}}
+                            <template x-if="node.responsible">
+                                <p class="text-[9.5px] text-zinc-500 truncate mt-0.5" x-text="node.responsible.name"></p>
+                            </template>
+                            <template x-if="!node.responsible">
+                                <p class="text-[9px] text-zinc-400 italic mt-0.5">Sin titular</p>
+                            </template>
                         </div>
 
                     </div>
@@ -492,7 +505,7 @@
 
                 {{-- Responsable Titular --}}
                 <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Responsable Titular</span>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block mb-1.5">Responsable Titular / Encargado</span>
                     <template x-if="selectedUnit && selectedUnit.responsible">
                         <div class="flex items-center gap-2.5">
                             <div class="w-8 h-8 rounded-full bg-zinc-900 text-white font-bold text-xs flex items-center justify-center shrink-0"
@@ -509,19 +522,19 @@
                     </template>
                 </div>
 
-                {{-- Métricas Rápidas --}}
+                {{-- Métricas Organizacionales --}}
                 <div class="grid grid-cols-2 gap-2">
+                    <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80">
+                        <span class="text-[10px] uppercase font-bold text-zinc-400 block">Sub-áreas</span>
+                        <span class="text-xl font-bold font-mono text-zinc-900 mt-0.5 block"
+                              x-text="selectedUnit && selectedUnit.children ? selectedUnit.children.length : 0"></span>
+                        <span class="text-[10px] text-zinc-400">dependencias hijas</span>
+                    </div>
                     <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80">
                         <span class="text-[10px] uppercase font-bold text-zinc-400 block">Personal</span>
                         <span class="text-xl font-bold font-mono text-zinc-900 mt-0.5 block"
                               x-text="selectedUnit && selectedUnit.employees ? selectedUnit.employees.length : 0"></span>
-                        <span class="text-[10px] text-zinc-400">trabajadores</span>
-                    </div>
-                    <div class="p-3 rounded-xl bg-zinc-50 border border-zinc-200/80">
-                        <span class="text-[10px] uppercase font-bold text-zinc-400 block">Equipos OTI</span>
-                        <span class="text-xl font-bold font-mono text-blue-700 mt-0.5 block"
-                              x-text="selectedUnit && selectedUnit.assets ? selectedUnit.assets.length : 0"></span>
-                        <span class="text-[10px] text-zinc-400">activos en custodia</span>
+                        <span class="text-[10px] text-zinc-400">servidores adscritos</span>
                     </div>
                 </div>
 
@@ -529,7 +542,7 @@
                 <template x-if="selectedUnit && selectedUnit.children && selectedUnit.children.length > 0">
                     <div>
                         <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2"
-                              x-text="'Subcarpetas / Dependencias (' + selectedUnit.children.length + ')'"></span>
+                              x-text="'Subcarpetas / Dependencias Hijas (' + selectedUnit.children.length + ')'"></span>
                         <div class="space-y-1 max-h-40 overflow-y-auto pr-1">
                             <template x-for="child in selectedUnit.children" :key="child.id">
                                 <div @click="openInspector(child.id); centerOnNode(child.id)"
@@ -547,7 +560,7 @@
                     <div>
                         <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2"
                               x-text="'Personal en esta oficina (' + selectedUnit.employees.length + ')'"></span>
-                        <div class="space-y-1 max-h-36 overflow-y-auto pr-1">
+                        <div class="space-y-1 max-h-44 overflow-y-auto pr-1">
                             <template x-for="emp in selectedUnit.employees" :key="emp.id">
                                 <div class="p-2 rounded-lg bg-zinc-50 border border-zinc-200/60 flex items-center justify-between">
                                     <div class="min-w-0 pr-2">
@@ -556,28 +569,6 @@
                                     </div>
                                     <a :href="emp.show_url" class="text-zinc-600 hover:text-zinc-950 text-[10px] font-medium shrink-0 flex items-center gap-0.5">
                                         <span>Ficha</span>
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                                    </a>
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-                </template>
-
-                {{-- Activos OTI --}}
-                <template x-if="selectedUnit && selectedUnit.assets && selectedUnit.assets.length > 0">
-                    <div>
-                        <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2"
-                              x-text="'Equipos informáticos (' + selectedUnit.assets.length + ')'"></span>
-                        <div class="space-y-1 max-h-36 overflow-y-auto pr-1">
-                            <template x-for="asset in selectedUnit.assets" :key="asset.id">
-                                <div class="p-2 rounded-lg bg-zinc-50 border border-zinc-200/60 flex items-center justify-between">
-                                    <div class="min-w-0 pr-2">
-                                        <p class="font-semibold text-zinc-900 truncate" x-text="asset.name"></p>
-                                        <p class="text-[10px] font-mono text-zinc-400" x-text="(asset.internal_code || 'S/C') + ' • ' + asset.type_label"></p>
-                                    </div>
-                                    <a :href="asset.show_url" class="text-zinc-600 hover:text-zinc-950 text-[10px] font-medium shrink-0 flex items-center gap-0.5">
-                                        <span>Ver</span>
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                     </a>
                                 </div>
@@ -661,9 +652,8 @@
                             <th class="py-3 px-4">Oficina / Dependencia</th>
                             <th class="py-3 px-4">Tipo</th>
                             <th class="py-3 px-4">Depende de</th>
-                            <th class="py-3 px-4">Responsable</th>
+                            <th class="py-3 px-4">Responsable / Titular</th>
                             <th class="py-3 px-4 text-center">Personal</th>
-                            <th class="py-3 px-4 text-center">Equipos OTI</th>
                             <th class="py-3 px-4">Estado</th>
                             <th class="py-3 px-4 text-right">Acciones</th>
                         </tr>
@@ -703,10 +693,6 @@
                                 @php $empCount = $unit->employees_count ?? $unit->empoyees?->count() ?? 0; @endphp
                                 <span class="font-mono text-[11px] {{ $empCount > 0 ? 'text-zinc-800 font-medium' : 'text-zinc-300' }}">{{ $empCount }}</span>
                             </td>
-                            <td class="py-3 px-4 text-center">
-                                @php $assetCount = $unit->assets_count ?? $unit->assets?->count() ?? 0; @endphp
-                                <span class="font-mono text-[11px] {{ $assetCount > 0 ? 'text-blue-700 font-medium' : 'text-zinc-300' }}">{{ $assetCount }}</span>
-                            </td>
                             <td class="py-3 px-4">
                                 <span class="inline-flex items-center gap-1.5 text-[11px] {{ $unit->is_active ? 'text-zinc-700' : 'text-zinc-400' }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $unit->is_active ? 'bg-emerald-500' : 'bg-zinc-300' }}"></span>
@@ -722,7 +708,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="py-12 text-center text-zinc-400">
+                            <td colspan="7" class="py-12 text-center text-zinc-400">
                                 No se encontraron oficinas o dependencias.
                             </td>
                         </tr>
@@ -917,7 +903,7 @@
                 const links = [];
 
                 const slotWidth = 190;
-                const levelHeight = 135;
+                const levelHeight = 125;
 
                 const traverse = (node, depth, parentPos = null) => {
                     const isExpanded = !!this.folderExpanded[node.id];

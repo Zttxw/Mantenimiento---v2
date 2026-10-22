@@ -26,7 +26,7 @@ class OrganizationalUnitController extends Controller
             'total' => OrganizationalUnit::count(),
             'active' => OrganizationalUnit::where('is_active', true)->count(),
             'with_responsible' => OrganizationalUnit::whereNotNull('responsible_employee_id')->count(),
-            'with_assets' => OrganizationalUnit::has('assets')->count(),
+            'total_employees' => Employee::where('is_active', true)->count(),
         ];
 
         $allParents = OrganizationalUnit::where('is_active', true)->orderBy('name')->select('id', 'name', 'code')->get();
