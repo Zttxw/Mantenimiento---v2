@@ -25,20 +25,55 @@
             'planificada' => 'bg-zinc-400',
             'completada' => 'bg-zinc-300',
             default => 'bg-zinc-400',
-        };
-
-        // Extract unique offices and types for client filters
+        };        // Extract unique offices and types for client filters
         $campaignUnits = $campaign->campaignAssets
             ->map(fn($ca) => $ca->asset->organizationalUnit)
             ->filter()
             ->unique('id')
             ->sortBy('name');
 
-        $campaignTypes = $campaign->campaignAssets
-            ->map(fn($ca) => $ca->asset->asset_type?->value)
-            ->filter()
-            ->unique()
-            ->values();
+        // Metadatos y etiquetas para cada tipo de hardware
+        $typeMeta = [
+            'computadora' => ['label' => 'Computadoras / PCs', 'short' => 'PCs', 'icon' => 'desktop', 'order' => 1],
+            'laptop' => ['label' => 'Laptops y Portátiles', 'short' => 'Laptops', 'icon' => 'laptop', 'order' => 2],
+            'monitor' => ['label' => 'Monitores y Pantallas', 'short' => 'Monitores', 'icon' => 'monitor', 'order' => 3],
+            'impresora' => ['label' => 'Impresoras y Multifuncionales', 'short' => 'Impresoras', 'icon' => 'printer', 'order' => 4],
+            'escaner' => ['label' => 'Escáneres', 'short' => 'Escáneres', 'icon' => 'scanner', 'order' => 5],
+            'servidor' => ['label' => 'Servidores', 'short' => 'Servidores', 'icon' => 'server', 'order' => 6],
+            'tablet' => ['label' => 'Tablets', 'short' => 'Tablets', 'icon' => 'tablet', 'order' => 7],
+            'ups' => ['label' => 'UPS / Reguladores', 'short' => 'UPS', 'icon' => 'other', 'order' => 8],
+            'otro' => ['label' => 'Otros Equipos', 'short' => 'Otros', 'icon' => 'other', 'order' => 99],
+        ];
+
+        // Resumen agrupado por tipo de hardware con conteos y porcentajes
+        $categoriesStats = $campaign->campaignAssets->groupBy(function ($ca) {
+            return $ca->asset->asset_type?->value ?? 'otro';
+        })->map(function ($items, $typeKey) use ($typeMeta) {
+            $total = $items->count();
+            $attended = $items->where('status.value', 'atendido')->count();
+            $pending = $total - $attended;
+            $percent = $total > 0 ? round(($attended / $total) * 100) : 0;
+            $meta = $typeMeta[$typeKey] ?? [
+                'label' => ucfirst(str_replace('_', ' ', $typeKey)),
+                'short' => ucfirst(str_replace('_', ' ', $typeKey)),
+                'icon' => 'other',
+                'order' => 50,
+            ];
+
+            return [
+                'key' => $typeKey,
+                'label' => $meta['label'],
+                'short' => $meta['short'],
+                'icon' => $meta['icon'],
+                'order' => $meta['order'],
+                'total' => $total,
+                'attended' => $attended,
+                'pending' => $pending,
+                'percent' => $percent,
+            ];
+        })->sortBy('order')->values();
+
+        $campaignTypes = $categoriesStats->pluck('key')->values();
 
         $assetsData = $campaign->campaignAssets->map(function ($ca) {
             return [
@@ -54,6 +89,9 @@
                 'internal_code' => $ca->asset->internal_code ?? '',
                 'name' => $ca->asset->name,
                 'type' => $ca->asset->asset_type?->value ?? 'otro',
+                'type_label' => $ca->asset->asset_type?->label() ?? 'Otro',
+                'brand' => $ca->asset->brand ?? '',
+                'model' => $ca->asset->model ?? '',
                 'unit_id' => $ca->asset->organizational_unit_id ?? 0,
                 'unit_name' => $ca->asset->organizationalUnit?->name ?? '—',
                 'responsible_id' => $ca->asset->responsible_employee_id ?? '',
@@ -67,12 +105,14 @@
 
     <div x-data="{
         search: '',
-        statusFilter: 'all', // 'all', 'pending', 'attended'
+        statusFilter: 'all',
         typeFilter: 'all',
         unitFilter: 'all',
+        sortBy: 'unit',
         page: 1,
         perPage: 50,
         assets: @js($assetsData),
+        categories: @js($categoriesStats),
         attendModalOpen: false,
         quickAssetModalOpen: false,
         bulkUnitModalOpen: false,
@@ -115,16 +155,32 @@
         },
         get filteredAssets() {
             const q = this.search.trim().toLowerCase();
-            return this.assets.filter(item => {
+            let result = this.assets.filter(item => {
                 if (this.statusFilter === 'pending' && item.status === 'atendido') return false;
                 if (this.statusFilter === 'attended' && item.status !== 'atendido') return false;
                 if (this.typeFilter !== 'all' && item.type !== this.typeFilter) return false;
                 if (this.unitFilter !== 'all' && String(item.unit_id) !== String(this.unitFilter)) return false;
 
                 if (!q) return true;
-                const text = (item.patrimonial_code + ' ' + item.internal_code + ' ' + item.name + ' ' + item.unit_name + ' ' + item.responsible_name + ' ' + item.technician).toLowerCase();
+                const text = (item.patrimonial_code + ' ' + item.internal_code + ' ' + item.name + ' ' + item.unit_name + ' ' + item.responsible_name + ' ' + item.technician + ' ' + item.brand + ' ' + item.model).toLowerCase();
                 return text.includes(q);
             });
+
+            if (this.sortBy === 'unit') {
+                result.sort((a, b) => (a.unit_name || '').localeCompare(b.unit_name || '') || (a.name || '').localeCompare(b.name || ''));
+            } else if (this.sortBy === 'code') {
+                result.sort((a, b) => (a.patrimonial_code || a.internal_code || '').localeCompare(b.patrimonial_code || b.internal_code || ''));
+            } else if (this.sortBy === 'status') {
+                result.sort((a, b) => (a.status === 'atendido' ? 1 : -1) - (b.status === 'atendido' ? 1 : -1));
+            } else if (this.sortBy === 'name') {
+                result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            }
+
+            return result;
+        },
+        setCategoryFilter(key) {
+            this.typeFilter = key;
+            this.page = 1;
         },
         get totalPages() {
             return Math.ceil(this.filteredAssets.length / this.perPage) || 1;
@@ -261,199 +317,167 @@
             </div>
         </div>
 
-        {{-- 2. Tira Ejecutiva de Métricas (1 sola fila horizontal, alta densidad, borde limpio) --}}
-        <div class="mb-6 bg-white rounded-xl border border-zinc-200/90 shadow-xs divide-y sm:divide-y-0 sm:divide-x divide-zinc-100 grid grid-cols-2 lg:grid-cols-5 text-xs">
-            {{-- Métrica 1: Avance Global --}}
-            <div class="p-4 flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-baseline mb-1">
-                        <span class="text-zinc-400 text-[11px] font-medium">Avance Global</span>
-                        <span class="font-mono font-bold text-zinc-900 text-sm">{{ $progress }}%</span>
+        {{-- 2. Tira Minimalista de Métricas --}}
+        <div class="mb-4 p-3 bg-white rounded-xl border border-zinc-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="flex items-center gap-5 flex-wrap">
+                <div class="flex items-center gap-2.5">
+                    <span class="text-zinc-400 font-medium text-[11px]">Avance</span>
+                    <span class="font-mono font-bold text-zinc-900 text-sm">{{ $progress }}%</span>
+                    <div class="w-24 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-600 rounded-full transition-all duration-300" style="width: {{ $progress }}%"></div>
                     </div>
-                    <div class="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
-                        <div class="h-full bg-zinc-900 rounded-full transition-all duration-300" style="width: {{ $progress }}%"></div>
+                    <span class="font-mono text-[11px] text-zinc-400">({{ $atendidos }}/{{ $totalAssets }})</span>
+                </div>
+
+                <div class="h-3.5 w-px bg-zinc-200 hidden sm:block"></div>
+
+                <div class="flex items-center gap-4">
+                    <div>
+                        <span class="text-zinc-400">Pendientes:</span>
+                        <span class="font-mono font-semibold text-zinc-900 ml-1">{{ $pendientes }}</span>
+                    </div>
+                    <div>
+                        <span class="text-zinc-400">Atendidos:</span>
+                        <span class="font-mono font-semibold text-emerald-600 ml-1">{{ $atendidos }}</span>
                     </div>
                 </div>
-                <span class="font-mono text-[10px] text-zinc-400 mt-2 block">{{ $atendidos }} de {{ $totalAssets }} atendidos</span>
             </div>
 
-            {{-- Métrica 2: Canal Agente SIGAT --}}
-            <div class="p-4 flex flex-col justify-between">
-                <div>
-                    <span class="text-zinc-400 text-[11px] font-medium block mb-1">Agente SIGAT</span>
-                    <span class="font-mono font-bold text-zinc-900 text-lg block">{{ $atendidosAgente }}</span>
-                </div>
-                <span class="text-[10px] text-zinc-400 block mt-1">Detección autónoma</span>
-            </div>
-
-            {{-- Métrica 3: Canal Manual en Campo --}}
-            <div class="p-4 flex flex-col justify-between">
-                <div>
-                    <span class="text-zinc-400 text-[11px] font-medium block mb-1">Manual / Campo</span>
-                    <span class="font-mono font-bold text-zinc-900 text-lg block">{{ $atendidosManual }}</span>
-                </div>
-                <span class="text-[10px] text-zinc-400 block mt-1">Monitores, impresoras, etc.</span>
-            </div>
-
-            {{-- Métrica 4: Pendientes --}}
-            <div class="p-4 flex flex-col justify-between">
-                <div>
-                    <span class="text-zinc-400 text-[11px] font-medium block mb-1">Por Atender</span>
-                    <span class="font-mono font-bold text-zinc-900 text-lg block">{{ $pendientes }}</span>
-                </div>
-                <span class="text-[10px] text-zinc-400 block mt-1">Equipos en espera</span>
-            </div>
-
-            {{-- Métrica 5: Vigencia & Coordinación --}}
-            <div class="p-4 col-span-2 lg:col-span-1 flex flex-col justify-between">
-                <div>
-                    <span class="text-zinc-400 text-[11px] font-medium block mb-1">Cronograma</span>
-                    <span class="font-mono text-zinc-800 text-xs block font-medium">
-                        {{ $campaign->start_date?->format('d/m/Y') ?? '—' }} <span class="text-zinc-300">→</span> {{ $campaign->end_date?->format('d/m/Y') ?? '—' }}
-                    </span>
-                </div>
-                <span class="text-[10px] text-zinc-400 block truncate mt-1">
-                    {{ $campaign->coordinator?->full_name ?? 'Sede Central MDSJ' }}
-                </span>
+            <div class="text-[11px] font-mono text-zinc-400">
+                {{ $campaign->start_date?->format('d/m/Y') ?? '—' }} → {{ $campaign->end_date?->format('d/m/Y') ?? '—' }}
             </div>
         </div>
 
-        {{-- 3. Barra de Control del Listado de Activos --}}
-        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
-            {{-- Segmentos de Estado --}}
-            <div class="flex items-center gap-1 text-xs">
+        {{-- 3. Navegación por Categorías (Tabs Ultra-Limpios) --}}
+        <div class="flex items-center gap-1 border-b border-zinc-200/80 mb-3 overflow-x-auto pb-px scrollbar-none text-xs">
+            {{-- Tab Todos --}}
+            <button type="button"
+                    @click="setCategoryFilter('all')"
+                    :class="typeFilter === 'all'
+                        ? 'border-zinc-900 text-zinc-900 font-semibold'
+                        : 'border-transparent text-zinc-500 hover:text-zinc-800 hover:border-zinc-300'"
+                    class="px-3 py-2 border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0">
+                <span>Todos</span>
+                <span class="font-mono text-[10px] px-1.5 py-0.2 rounded-full"
+                      :class="typeFilter === 'all' ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'"
+                      x-text="assets.length"></span>
+            </button>
+
+            {{-- Tab por cada categoría presente (PCs, Monitores, Impresoras, etc.) --}}
+            <template x-for="cat in categories" :key="cat.key">
+                <button type="button"
+                        @click="setCategoryFilter(cat.key)"
+                        :class="typeFilter === cat.key
+                            ? 'border-zinc-900 text-zinc-900 font-semibold'
+                            : 'border-transparent text-zinc-500 hover:text-zinc-800 hover:border-zinc-300'"
+                        class="px-3 py-2 border-b-2 transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 whitespace-nowrap">
+                    <span x-text="cat.short"></span>
+                    <span class="font-mono text-[10px] px-1.5 py-0.2 rounded-full"
+                          :class="typeFilter === cat.key ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-600'"
+                          x-text="cat.total"></span>
+                </button>
+            </template>
+        </div>
+
+        {{-- 4. Controles y Filtros Ultra-Simples --}}
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3 text-xs">
+            {{-- Estados: Todos / Pendientes / Atendidos --}}
+            <div class="inline-flex items-center p-0.5 bg-zinc-100 rounded-lg text-xs shrink-0 self-start">
                 <button @click="setFilter('statusFilter', 'all')"
-                        :class="statusFilter === 'all' ? 'bg-zinc-900 text-white font-medium' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'"
-                        class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
-                    Todos ({{ $totalAssets }})
+                        :class="statusFilter === 'all' ? 'bg-white text-zinc-900 font-medium shadow-2xs' : 'text-zinc-600 hover:text-zinc-900'"
+                        class="px-2.5 py-1 rounded-md transition-colors cursor-pointer">
+                    Todos
                 </button>
                 <button @click="setFilter('statusFilter', 'pending')"
-                        :class="statusFilter === 'pending' ? 'bg-zinc-900 text-white font-medium' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'"
-                        class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                        :class="statusFilter === 'pending' ? 'bg-white text-zinc-900 font-medium shadow-2xs' : 'text-zinc-600 hover:text-zinc-900'"
+                        class="px-2.5 py-1 rounded-md transition-colors cursor-pointer">
                     Pendientes ({{ $pendientes }})
                 </button>
                 <button @click="setFilter('statusFilter', 'attended')"
-                        :class="statusFilter === 'attended' ? 'bg-zinc-900 text-white font-medium' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'"
-                        class="px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                        :class="statusFilter === 'attended' ? 'bg-white text-zinc-900 font-medium shadow-2xs' : 'text-zinc-600 hover:text-zinc-900'"
+                        class="px-2.5 py-1 rounded-md transition-colors cursor-pointer">
                     Atendidos ({{ $atendidos }})
                 </button>
             </div>
 
-            {{-- Filtros Select y Buscador --}}
-            <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                {{-- Filtro Tipo de Hardware --}}
-                <select x-model="typeFilter" @change="page = 1"
-                        class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900">
-                    <option value="all">Todos los tipos</option>
-                    @foreach ($campaignTypes as $cType)
-                        <option value="{{ $cType }}">{{ ucfirst($cType) }}</option>
-                    @endforeach
-                </select>
-
-                {{-- Filtro Oficina --}}
+            {{-- Filtro de Dependencia y Buscador Rápido --}}
+            <div class="flex items-center gap-2 w-full sm:w-auto">
                 <select x-model="unitFilter" @change="page = 1"
-                        class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 max-w-[160px] truncate">
+                        class="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 max-w-[170px] truncate cursor-pointer">
                     <option value="all">Todas las oficinas</option>
                     @foreach ($campaignUnits as $u)
                         <option value="{{ $u->id }}">{{ $u->name }}</option>
                     @endforeach
                 </select>
 
-                {{-- Buscador Instantáneo --}}
-                <div class="relative w-full sm:w-64">
-                    <svg class="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    <input type="text" x-model="search" @input="page = 1" placeholder="Sticker, equipo u oficina..."
-                           class="w-full pl-8 pr-3 py-1.5 bg-white rounded-lg border border-zinc-200 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                <div class="relative flex-1 sm:w-56">
+                    <svg class="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    <input type="text" x-model="search" @input="page = 1" placeholder="Buscar..."
+                           class="w-full pl-8 pr-6 py-1.5 bg-white rounded-lg border border-zinc-200 text-xs text-zinc-800 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                    <button type="button" x-show="search.length > 0" @click="search = ''; page = 1" class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 text-xs">
+                        ✕
+                    </button>
                 </div>
             </div>
         </div>
 
-        {{-- 4. Grilla de Activos Ultraminimalista (Ancho completo) --}}
-        <div class="bg-white rounded-xl border border-zinc-200/90 overflow-hidden shadow-xs">
+                {{-- 5. Tabla Única, Nítida y Minimalista --}}
+        <div class="bg-white rounded-xl border border-zinc-200/80 overflow-hidden shadow-xs">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse text-xs">
                     <thead>
-                        <tr class="border-b border-zinc-200/80 bg-zinc-50/75 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-                            <th class="py-3 px-4">Sticker / Código</th>
-                            <th class="py-3 px-4">Activo / Hardware</th>
-                            <th class="py-3 px-4">Oficina</th>
-                            <th class="py-3 px-4">Custodio</th>
-                            <th class="py-3 px-4">Canal</th>
-                            <th class="py-3 px-4">Estado</th>
-                            <th class="py-3 px-4">Técnico</th>
-                            <th class="py-3 px-4 text-right">Acción</th>
+                        <tr class="border-b border-zinc-200/80 bg-zinc-50/70 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+                            <th class="py-2.5 px-3.5">Sticker / Código</th>
+                            <th class="py-2.5 px-3.5">Equipo</th>
+                            <th class="py-2.5 px-3.5">Oficina</th>
+                            <th class="py-2.5 px-3.5">Custodio</th>
+                            <th class="py-2.5 px-3.5">Estado</th>
+                            <th class="py-2.5 px-3.5 text-right">Acción</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100">
                         <template x-for="item in pagedAssets" :key="item.id">
-                            <tr class="hover:bg-zinc-50/75 transition-colors">
-                                {{-- 1. Sticker Patrimonial --}}
-                                <td class="py-3 px-4">
+                            <tr class="hover:bg-zinc-50/60 transition-colors">
+                                {{-- 1. Sticker / Código --}}
+                                <td class="py-2.5 px-3.5 whitespace-nowrap">
                                     <template x-if="item.patrimonial_code">
-                                        <span class="font-mono text-xs font-semibold text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded border border-zinc-200" x-text="item.patrimonial_code"></span>
+                                        <span class="font-mono text-xs font-semibold text-zinc-900" x-text="item.patrimonial_code"></span>
                                     </template>
                                     <template x-if="!item.patrimonial_code">
-                                        <span class="font-mono text-[11px] text-zinc-400 italic">Sin sticker</span>
+                                        <span class="font-mono text-[11px] text-zinc-400" x-text="item.internal_code || '—'"></span>
                                     </template>
                                 </td>
 
-                                {{-- 2. Activo y Hardware (Con símbolo preciso) --}}
-                                <td class="py-3 px-4">
-                                    <div class="flex items-center gap-2.5">
-                                        <template x-if="item.type === 'impresora'">
-                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.75 6.75h10.5V3.75H6.75v3zm10.5 4.5h.008v.008h-.008v-.008zM4.5 9h15a1.5 1.5 0 011.5 1.5v6a1.5 1.5 0 01-1.5 1.5H4.5A1.5 1.5 0 013 16.5v-6A1.5 1.5 0 014.5 9zm2.25 5.25h10.5v6H6.75v-6z"/></svg>
+                                {{-- 2. Equipo (Nombre + tipo si está en 'Todos') --}}
+                                <td class="py-2.5 px-3.5">
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-medium text-zinc-900" x-text="item.name"></span>
+                                        <template x-if="typeFilter === 'all'">
+                                            <span class="text-[10px] font-mono text-zinc-400 px-1 py-0.2 bg-zinc-100 rounded" x-text="item.type_label"></span>
                                         </template>
-                                        <template x-if="item.type === 'monitor'">
-                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 5.25h16.5A1.5 1.5 0 0121.75 6.75v9a1.5 1.5 0 01-1.5 1.5H3.75a1.5 1.5 0 01-1.5-1.5v-9a1.5 1.5 0 011.5-1.5zm6 12v3m4.5-3v3m-6.75 0h9"/></svg>
-                                        </template>
-                                        <template x-if="item.type === 'laptop'">
-                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.25 15.75l1.5-9A2.25 2.25 0 016 4.5h12a2.25 2.25 0 012.25 2.25l1.5 9m-19.5 0h19.5m-19.5 0A2.25 2.25 0 004.5 18h15a2.25 2.25 0 002.25-2.25m-19.5 0v.75A2.25 2.25 0 004.5 21h15a2.25 2.25 0 002.25-2.25v-.75"/></svg>
-                                        </template>
-                                        <template x-if="item.type === 'escaner'">
-                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5M3.75 17.25h16.5m-16.5 0a2.25 2.25 0 002.25 2.25h12a2.25 2.25 0 002.25-2.25m-16.5 0V9.75m16.5 7.5V9.75m0 0a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25v7.5m16.5-7.5H3.75"/></svg>
-                                        </template>
-                                        <template x-if="item.type !== 'impresora' && item.type !== 'monitor' && item.type !== 'laptop' && item.type !== 'escaner'">
-                                            <svg class="w-4 h-4 text-zinc-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
-                                        </template>
-
-                                        <div class="min-w-0">
-                                            <a :href="'{{ url('assets') }}/' + item.asset_id"
-                                               class="font-medium text-zinc-900 hover:text-zinc-600 transition-colors block truncate max-w-[220px]"
-                                               x-text="item.name"></a>
-                                            <span class="font-mono text-[10px] text-zinc-400 block" x-text="item.internal_code"></span>
-                                        </div>
                                     </div>
+                                    <template x-if="item.brand || item.model">
+                                        <div class="text-[11px] text-zinc-400 truncate max-w-[220px]" x-text="(item.brand + ' ' + (item.model || '')).trim()"></div>
+                                    </template>
                                 </td>
 
                                 {{-- 3. Oficina --}}
-                                <td class="py-3 px-4">
-                                    <span class="text-zinc-700 block truncate max-w-[190px]" :title="item.unit_name" x-text="item.unit_name"></span>
+                                <td class="py-2.5 px-3.5">
+                                    <span class="text-zinc-600 block truncate max-w-[190px]" :title="item.unit_name" x-text="item.unit_name"></span>
                                 </td>
 
                                 {{-- 4. Custodio --}}
-                                <td class="py-3 px-4">
+                                <td class="py-2.5 px-3.5">
                                     <span class="text-zinc-600 block truncate max-w-[170px]" :title="item.responsible_name" x-text="item.responsible_name"></span>
                                 </td>
 
-                                {{-- 5. Canal de Atención --}}
-                                <td class="py-3 px-4">
-                                    <template x-if="item.status === 'atendido'">
-                                        <span class="font-mono text-[11px]"
-                                              :class="item.attended_type === 'agente' ? 'text-zinc-900 font-medium' : 'text-zinc-700'"
-                                              x-text="item.attended_type === 'agente' ? 'Agente' : 'Manual'"></span>
-                                    </template>
-                                    <template x-if="item.status !== 'atendido'">
-                                        <span class="text-zinc-300 font-mono text-[11px]">—</span>
-                                    </template>
-                                </td>
-
-                                {{-- 6. Estado --}}
-                                <td class="py-3 px-4">
+                                {{-- 5. Estado --}}
+                                <td class="py-2.5 px-3.5 whitespace-nowrap">
                                     <template x-if="item.status === 'atendido'">
                                         <span class="inline-flex items-center gap-1.5 text-zinc-900 font-medium">
                                             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                             <span>Atendido</span>
-                                            <span class="font-mono text-[10px] text-zinc-400" x-text="item.attended_date ? '· ' + item.attended_date : ''"></span>
+                                            <span class="text-[10px] text-zinc-400 font-mono" x-text="item.attended_date ? '· ' + item.attended_date : ''"></span>
                                         </span>
                                     </template>
                                     <template x-if="item.status !== 'atendido'">
@@ -464,19 +488,14 @@
                                     </template>
                                 </td>
 
-                                {{-- 7. Técnico --}}
-                                <td class="py-3 px-4">
-                                    <span class="text-zinc-600 block truncate max-w-[140px]" :title="item.technician" x-text="item.technician"></span>
-                                </td>
-
-                                {{-- 8. Acción Directa --}}
-                                <td class="py-3 px-4 text-right">
+                                {{-- 6. Acción --}}
+                                <td class="py-2.5 px-3.5 text-right whitespace-nowrap">
                                     <div class="flex items-center justify-end gap-1.5">
                                         @if ($isActive)
                                         <button
                                             @click="openAttendModal(item)"
                                             type="button"
-                                            :class="item.status === 'atendido' ? 'text-zinc-600 hover:bg-zinc-100' : 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-xs'"
+                                            :class="item.status === 'atendido' ? 'text-zinc-600 hover:bg-zinc-100' : 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-2xs'"
                                             class="px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer"
                                             x-text="item.status === 'atendido' ? 'Editar' : 'Atender'">
                                         </button>
@@ -496,52 +515,36 @@
                                 </td>
                             </tr>
                         </template>
+
                         <tr x-show="filteredAssets.length === 0">
-                            <td colspan="8" class="py-16 text-center text-zinc-400">
-                                No se encontraron activos con los filtros seleccionados.
+                            <td colspan="6" class="py-12 text-center text-zinc-400">
+                                No se encontraron equipos.
                             </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            {{-- Controles de Paginación Reactiva --}}
-            <div class="px-4 py-3 border-t border-zinc-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-zinc-500 bg-zinc-50/50">
-                <div class="flex items-center gap-2">
-                    <span>Mostrando <span class="font-semibold text-zinc-800" x-text="filteredAssets.length === 0 ? 0 : ((page - 1) * perPage + 1)"></span> a <span class="font-semibold text-zinc-800" x-text="Math.min(page * perPage, filteredAssets.length)"></span> de <span class="font-semibold text-zinc-800" x-text="filteredAssets.length"></span> activos</span>
-                    <span x-show="filteredAssets.length !== assets.length" class="text-zinc-400 font-mono text-[11px]">
-                        (filtrados de <span x-text="assets.length"></span> totales)
-                    </span>
+            {{-- Paginación Minimalista --}}
+            <div class="px-3.5 py-2.5 border-t border-zinc-100 flex items-center justify-between text-xs text-zinc-500 bg-zinc-50/40">
+                <div>
+                    <span class="font-medium text-zinc-800" x-text="filteredAssets.length"></span> equipos
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <div class="flex items-center gap-1.5">
-                        <span class="text-[11px] text-zinc-400">Por página:</span>
-                        <select x-model.number="perPage" @change="page = 1"
-                                class="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-700 focus:outline-none focus:ring-1 focus:ring-zinc-900 cursor-pointer">
-                            <option :value="25">25</option>
-                            <option :value="50">50</option>
-                            <option :value="100">100</option>
-                            <option :value="250">250</option>
-                            <option :value="10000">Todos</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-center gap-1">
-                        <button type="button" @click="page--" :disabled="page <= 1"
-                                :class="page <= 1 ? 'opacity-40 cursor-not-allowed text-zinc-300' : 'text-zinc-700 hover:bg-zinc-200 cursor-pointer'"
-                                class="p-1.5 rounded-lg border border-zinc-200 bg-white transition-colors" title="Página anterior">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-                        </button>
-                        <span class="px-2 font-mono text-[11px]">
-                            Pág. <span class="font-semibold text-zinc-800" x-text="page"></span> de <span class="font-semibold text-zinc-800" x-text="totalPages || 1"></span>
-                        </span>
-                        <button type="button" @click="page++" :disabled="page >= totalPages"
-                                :class="page >= totalPages ? 'opacity-40 cursor-not-allowed text-zinc-300' : 'text-zinc-700 hover:bg-zinc-200 cursor-pointer'"
-                                class="p-1.5 rounded-lg border border-zinc-200 bg-white transition-colors" title="Página siguiente">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </button>
-                    </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="page--" :disabled="page <= 1"
+                            :class="page <= 1 ? 'opacity-30 cursor-not-allowed' : 'hover:bg-zinc-200 cursor-pointer text-zinc-700'"
+                            class="p-1 rounded border border-zinc-200 bg-white transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </button>
+                    <span class="font-mono text-[11px] text-zinc-600">
+                        <span x-text="page"></span> / <span x-text="totalPages || 1"></span>
+                    </span>
+                    <button type="button" @click="page++" :disabled="page >= totalPages"
+                            :class="page >= totalPages ? 'opacity-30 cursor-not-allowed' : 'hover:bg-zinc-200 cursor-pointer text-zinc-700'"
+                            class="p-1 rounded border border-zinc-200 bg-white transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    </button>
                 </div>
             </div>
         </div>
